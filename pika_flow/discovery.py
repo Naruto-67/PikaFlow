@@ -58,6 +58,7 @@ import re
 DEPRECATED_KNOWN = {
     "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash",
     "gemini-1.5-flash-8b", "gemini-1.5-pro", "gemini-2.0-pro",
+    "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro",
     "mixtral-8x7b-32768", "gemma2-9b-it", "llama3-70b-8192", "llama3-8b-8192",
     "llama-3.1-70b-versatile", "llama-3.1-8b-instant",
     "mistralai/mistral-7b-instruct:free"
@@ -128,6 +129,8 @@ def is_model_allowed(model_name: str, banned: set[str]) -> bool:
 def _refresh_model_ids(providers: list[dict], banned_models: set[str]) -> list[dict]:
     """Query each provider's /models endpoint to discover ALL active/free models without hardcoded limits."""
     expanded_providers = []
+    seen_models = set()
+    queried_services = set()
     
     for p in providers:
         if "local" in p.get("base_url", ""):
@@ -142,6 +145,9 @@ def _refresh_model_ids(providers: list[dict], banned_models: set[str]) -> list[d
         added = False
         
         if "gemini" in p["id"]:
+            if "gemini" in queried_services:
+                continue
+            queried_services.add("gemini")
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
                 resp = requests.get(url, timeout=10)
@@ -152,6 +158,9 @@ def _refresh_model_ids(providers: list[dict], banned_models: set[str]) -> list[d
                     ]
                     valid_models = [m for m in models if is_model_allowed(m, banned_models)]
                     for m in valid_models:
+                        if m in seen_models:
+                            continue
+                        seen_models.add(m)
                         new_p = p.copy()
                         new_p["id"] = f"gemini_{m.replace('-', '_').replace('.', '_')}"
                         new_p["name"] = f"Google ({m})"
@@ -165,6 +174,9 @@ def _refresh_model_ids(providers: list[dict], banned_models: set[str]) -> list[d
                 print(f"  ⚠️ Failed to discover Gemini models: {e}")
                 
         elif "groq" in p["id"]:
+            if "groq" in queried_services:
+                continue
+            queried_services.add("groq")
             try:
                 url = "https://api.groq.com/openai/v1/models"
                 resp = requests.get(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=10)
@@ -172,6 +184,9 @@ def _refresh_model_ids(providers: list[dict], banned_models: set[str]) -> list[d
                     models = [m["id"] for m in resp.json().get("data", []) if m.get("active", True)]
                     valid_models = [m for m in models if is_model_allowed(m, banned_models)]
                     for m in valid_models:
+                        if m in seen_models:
+                            continue
+                        seen_models.add(m)
                         new_p = p.copy()
                         new_p["id"] = f"groq_{m.replace('-', '_').replace('.', '_')}"
                         new_p["name"] = f"Groq ({m})"
@@ -184,6 +199,9 @@ def _refresh_model_ids(providers: list[dict], banned_models: set[str]) -> list[d
                 print(f"  ⚠️ Failed to discover Groq models: {e}")
                 
         elif "openrouter" in p["id"]:
+            if "openrouter" in queried_services:
+                continue
+            queried_services.add("openrouter")
             try:
                 url = "https://openrouter.ai/api/v1/models"
                 resp = requests.get(url, timeout=10)
@@ -194,6 +212,9 @@ def _refresh_model_ids(providers: list[dict], banned_models: set[str]) -> list[d
                     ]
                     valid_models = [m for m in free_models if is_model_allowed(m, banned_models)]
                     for m in valid_models:
+                        if m in seen_models:
+                            continue
+                        seen_models.add(m)
                         new_p = p.copy()
                         new_p["id"] = f"or_{m.split('/')[-1].replace('-', '_').replace('.', '_').replace(':', '_')}"
                         new_p["name"] = f"OpenRouter ({m.split('/')[-1]})"
@@ -206,12 +227,14 @@ def _refresh_model_ids(providers: list[dict], banned_models: set[str]) -> list[d
                 print(f"  ⚠️ Failed to discover OpenRouter models: {e}")
         
         elif "huggingface" in p["id"]:
-            if is_model_allowed(p.get("model", ""), banned_models):
+            if is_model_allowed(p.get("model", ""), banned_models) and p.get("model") not in seen_models:
+                seen_models.add(p.get("model"))
                 expanded_providers.append(p)
                 added = True
             
         if not added and p.get("type") == "text":
-            if is_model_allowed(p.get("model", ""), banned_models):
+            if is_model_allowed(p.get("model", ""), banned_models) and p.get("model") not in seen_models:
+                seen_models.add(p.get("model"))
                 expanded_providers.append(p)
             
     return expanded_providers

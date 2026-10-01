@@ -152,6 +152,7 @@ async def run(spec_path: Path) -> None:
         # ── Stage 4: Video Clip Generation ────────────────────────────────
         log.step("orchestrator", "▶ Stage 4 — Video Clip Generation")
         clips = await generate_clips(
+            spec=spec,
             scenes=scenes,
             work_dir=work,
             logger=log,

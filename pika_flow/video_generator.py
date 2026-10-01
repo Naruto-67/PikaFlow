@@ -37,9 +37,10 @@ def _enrich_prompt(base: str, style_keywords: list[str]) -> str:
 
 
 async def generate_clips(
-    spec: dict,
-    work_dir: Path,
-    logger: PikaLogger,
+    spec: dict | None = None,
+    work_dir: Path | None = None,
+    logger: PikaLogger | None = None,
+    scenes: list[dict] | None = None,
     start: int = 0,
     end: int | None = None,
 ) -> list[Path]:
@@ -47,15 +48,18 @@ async def generate_clips(
     Generate video clips for scenes[start:end].
 
     Args:
-        spec:     The full run_spec.json dict
+        spec:     The full run_spec.json dict (optional if scenes provided)
         work_dir: Directory to save clips
         logger:   PikaLogger instance
+        scenes:   Optional list of scene dicts (falls back to spec['scenes'])
         start:    First scene index (inclusive)
         end:      Last scene index (exclusive); None = all
 
     Returns:
         List of paths to generated MP4 clips, in order.
     """
+    spec   = spec or {}
+    work_dir = work_dir or Path(".")
     cfg    = _load_channel_cfg()
     
     # Overrides from spec, fallback to channel_config
@@ -65,11 +69,14 @@ async def generate_clips(
     fmt    = cfg.get("video_format", {}).get(spec.get("format", cfg.get("default_format", "medium")), {})
     
     res_str = spec.get("resolution") or fmt.get("resolution", "1280x720")
-    width  = int(res_str.split("x")[0])
-    height = int(res_str.split("x")[1])
+    try:
+        width  = int(res_str.split("x")[0])
+        height = int(res_str.split("x")[1])
+    except Exception:
+        width, height = 1280, 720
     
     fps    = fmt.get("fps", 24)
-    scenes = spec.get("scenes", [])
+    scenes = scenes if scenes is not None else spec.get("scenes", [])
 
     diffusion = DiffusionWrapper(logger=logger, work_dir=work_dir)
     subset    = scenes[start:end]

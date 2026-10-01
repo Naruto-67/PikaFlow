@@ -2,23 +2,6 @@
   "providers": [
     {
       "id": "gemini",
-      "name": "Google Gemini 2.5 Flash",
-      "model": "gemini-2.5-flash",
-      "type": "text",
-      "base_url": "https://generativelanguage.googleapis.com/",
-      "endpoint": "v1beta/models/gemini-2.5-flash:generateContent",
-      "auth_header": "x-goog-api-key",
-      "secret_key": "GEMINI_API_KEY",
-      "quota": {
-        "requests_per_day": 1500,
-        "reset": "daily"
-      },
-      "priority": 1,
-      "enabled": true,
-      "deprecated": false
-    },
-    {
-      "id": "gemini_3_flash",
       "name": "Google Gemini 3 Flash Preview",
       "model": "gemini-3-flash-preview",
       "type": "text",
@@ -30,7 +13,7 @@
         "requests_per_day": 1500,
         "reset": "daily"
       },
-      "priority": 2,
+      "priority": 1,
       "enabled": true,
       "deprecated": false
     },
