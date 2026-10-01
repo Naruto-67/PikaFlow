@@ -32,6 +32,13 @@ jobs:
         run: npm install
         working-directory: panel
 
+      - name: Encrypt GitHub Token
+        run: node encrypt.js
+        working-directory: panel
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          DEV_PANEL_PASSWORD: ${{ secrets.DEV_PANEL_PASSWORD }}
+
       - name: Build
         run: npm run build
         working-directory: panel
