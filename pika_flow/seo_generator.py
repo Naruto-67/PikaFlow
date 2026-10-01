@@ -76,7 +76,7 @@ def _reddit_hot(subreddit: str, limit: int = 10) -> list[str]:
     Fetch hot post titles from a subreddit — no API key needed for read-only.
     """
     try:
-        headers = {"User-Agent": "PikaFlow/1.0"}
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
         resp = requests.get(
             f"https://www.reddit.com/r/{subreddit}/hot.json?limit={limit}",
             headers=headers, timeout=10,

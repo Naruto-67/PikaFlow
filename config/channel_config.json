@@ -1,7 +1,7 @@
 {
-  "_comment": "Edit this file to configure PikaFlow for your channel and niche.",
-  "channel_name": "YourChannelName",
-  "niche": "your niche here (e.g. anime-style AI art, tech tips, fact videos)",
+  "_comment": "PikaFlow automated production config for AnimeRise",
+  "channel_name": "AnimeRise",
+  "niche": "anime lore, power scaling, and untold dark mysteries",
   "platform": "youtube",
   "video_format": {
     "short": {
@@ -26,9 +26,15 @@
   },
   "default_format": "medium",
   "visual_mode": "animeFrameRendered",
-  "style_keywords": ["anime", "pastel", "cinematic", "soft lighting"],
+  "style_keywords": [
+    "masterpiece anime illustration",
+    "makoto shinkai aesthetic",
+    "cinematic lighting",
+    "dramatic shadows",
+    "high fantasy anime",
+    "8k detailed visual novel art"
+  ],
   "language": "en",
   "auto_upload": false,
   "auto_upload_schedule": "manual"
 }
-
