@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GH_API } from '../config'
+import { GH_API, REPO_PATH } from '../config'
 import CryptoJS from 'crypto-js'
 
 const ENCRYPTED_PAT = import.meta.env.VITE_ENCRYPTED_PAT || ''
@@ -23,21 +23,23 @@ export default function LoginCard({ onLogin }) {
       const bytes = CryptoJS.AES.decrypt(ENCRYPTED_PAT, password)
       const token = bytes.toString(CryptoJS.enc.Utf8)
       
-      if (!token) {
+      // If the password is wrong, it decrypts to gibberish. Real tokens start with ghp_ or github_pat_
+      if (!token || !/^(ghp_|github_pat_)/.test(token)) {
         setErr('Incorrect password.')
         setLoading(false)
         return
       }
 
-      // 2. Verify the token by calling the GitHub API
-      const res = await fetch(`${GH_API}/user`, {
+      // 2. Verify the token by checking access to this specific repository
+      // (Using /user fails if you used a fine-grained PAT with repo-only scope)
+      const res = await fetch(`${GH_API}/repos/${REPO_PATH}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
       if (res.ok) {
         onLogin(token) // Store the *decrypted* token in session memory
       } else {
-        setErr('Decryption succeeded, but token is invalid/expired on GitHub.')
+        setErr(`Token rejected by GitHub (HTTP ${res.status}).`)
       }
     } catch (error) {
       setErr('Incorrect password or decryption error.')
