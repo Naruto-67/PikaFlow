@@ -66,6 +66,7 @@ jobs:
         with:
           name: run-spec-${{ steps.meta.outputs.run_id }}
           path: pika_work/${{ steps.meta.outputs.run_id }}/
+          retention-days: 1
 
   # ──────────────────────────────────────────────────────────────────────────
   # JOB 2 ▸ Generate video clips (chunked, up to 6 h)
@@ -118,6 +119,7 @@ jobs:
         with:
           name: clips-${{ env.RUN_ID }}
           path: pika_work/${{ env.RUN_ID }}/
+          retention-days: 1
 
   # ──────────────────────────────────────────────────────────────────────────
   # JOB 3 ▸ Edit — AI timeline editing (FFmpeg)
@@ -159,6 +161,7 @@ jobs:
         with:
           name: final-${{ env.RUN_ID }}
           path: pika_work/${{ env.RUN_ID }}/${{ env.RUN_ID }}.mp4
+          retention-days: 2
 
   # ──────────────────────────────────────────────────────────────────────────
   # JOB 4 ▸ Release — create GitHub release and attach all assets
