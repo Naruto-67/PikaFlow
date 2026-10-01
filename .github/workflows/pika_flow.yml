@@ -78,8 +78,9 @@ jobs:
     permissions:
       contents: write
     env:
-      GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
-      GH_TOKEN:             ${{ secrets.GITHUB_TOKEN }}
+      PAT_TOKEN:            ${{ secrets.PAT_TOKEN }}
+      GITHUB_TOKEN:         ${{ secrets.PAT_TOKEN || secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+      GH_TOKEN:             ${{ secrets.PAT_TOKEN || secrets.GH_PAT || secrets.GITHUB_TOKEN }}
       GEMINI_API_KEY:       ${{ secrets.GEMINI_API_KEY }}
       GROQ_API_KEY:         ${{ secrets.GROQ_API_KEY }}
       OPENROUTER_API_KEY:   ${{ secrets.OPENROUTER_API_KEY }}
@@ -178,8 +179,9 @@ jobs:
       contents: write
     env:
       RUN_ID: ${{ needs.init.outputs.run_id }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout

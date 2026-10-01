@@ -28,7 +28,12 @@ _GH_API = "https://api.github.com"
 class ReleaseManager:
     def __init__(self, logger: PikaLogger) -> None:
         self.log   = logger
-        self.token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN", "")
+        self.token = (
+            os.environ.get("PAT_TOKEN")
+            or os.environ.get("GITHUB_TOKEN")
+            or os.environ.get("GH_TOKEN")
+            or ""
+        )
         self.repo  = os.environ.get("GITHUB_REPOSITORY", "")  # e.g. Naruto-67/PikaFlow
 
         if not self.repo:
@@ -50,7 +55,7 @@ class ReleaseManager:
             self.repo = "Naruto-67/PikaFlow"
 
         if not self.token:
-            raise RuntimeError("GITHUB_TOKEN / GH_TOKEN env var not set")
+            raise RuntimeError("PAT_TOKEN / GITHUB_TOKEN / GH_TOKEN env var not set")
 
         self.headers = {
             "Authorization": f"Bearer {self.token}",
