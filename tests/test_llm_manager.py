@@ -188,3 +188,4 @@ async def test_local_provider_returns_local_dict(cfg_dir):
     result = await mgr.call("tts", {})
     assert result.get("local") is True
     assert result.get("provider") == "bark_tts"
+

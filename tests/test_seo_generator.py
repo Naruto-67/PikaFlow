@@ -150,3 +150,4 @@ async def test_generate_metadata_writes_file(tmp_path):
     assert (tmp_path / "seo_metadata.json").exists()
     saved = json.loads((tmp_path / "seo_metadata.json").read_text())
     assert saved["title"] == "Test Title"
+

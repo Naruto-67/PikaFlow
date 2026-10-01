@@ -153,3 +153,4 @@ async def test_close_clears_all_clients():
     assert len(mgr._clients) == 2
     await mgr.close()
     assert len(mgr._clients) == 0
+

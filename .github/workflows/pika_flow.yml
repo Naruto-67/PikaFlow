@@ -25,17 +25,17 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   init:
     name: 🚀 Init & Spec Generation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       run_id:     ${{ steps.meta.outputs.run_id }}
       spec_path:  ${{ steps.meta.outputs.spec_path }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.11"
           cache: pip
@@ -58,7 +58,7 @@ jobs:
           }' > "pika_work/${RUN_ID}/run_spec.json"
 
       - name: Upload spec artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: run-spec-${{ steps.meta.outputs.run_id }}
           path: pika_work/${{ steps.meta.outputs.run_id }}/
@@ -69,7 +69,7 @@ jobs:
   generate:
     name: 🎬 Clip Generation
     needs: init
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GEMINI_API_KEY:       ${{ secrets.GEMINI_API_KEY }}
       GROQ_API_KEY:         ${{ secrets.GROQ_API_KEY }}
@@ -83,10 +83,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.11"
           cache: pip
@@ -98,7 +98,7 @@ jobs:
         run: sudo apt-get install -y ffmpeg
 
       - name: Download spec artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.3.0
         with:
           name: run-spec-${{ env.RUN_ID }}
           path: pika_work/${{ env.RUN_ID }}/
@@ -107,7 +107,7 @@ jobs:
         run: python -m pika_flow.orchestrator pika_work/${{ env.RUN_ID }}/run_spec.json
 
       - name: Upload generated clips
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: clips-${{ env.RUN_ID }}
           path: pika_work/${{ env.RUN_ID }}/
@@ -118,16 +118,16 @@ jobs:
   edit:
     name: ✂️ Video Editor
     needs: [init, generate]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       RUN_ID: ${{ needs.init.outputs.run_id }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.11"
           cache: pip
@@ -139,7 +139,7 @@ jobs:
         run: sudo apt-get install -y ffmpeg
 
       - name: Download clips artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.3.0
         with:
           name: clips-${{ env.RUN_ID }}
           path: pika_work/${{ env.RUN_ID }}/
@@ -148,7 +148,7 @@ jobs:
         run: python -m pika_flow.video_editor pika_work/${{ env.RUN_ID }}/
 
       - name: Upload final video
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: final-${{ env.RUN_ID }}
           path: pika_work/${{ env.RUN_ID }}/${{ env.RUN_ID }}.mp4
@@ -159,7 +159,7 @@ jobs:
   release:
     name: 📦 GitHub Release
     needs: [init, edit]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     env:
@@ -168,16 +168,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Download final video
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.3.0
         with:
           name: final-${{ env.RUN_ID }}
           path: pika_work/${{ env.RUN_ID }}/
 
       - name: Download spec (for logs)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.3.0
         with:
           name: run-spec-${{ env.RUN_ID }}
           path: pika_work/${{ env.RUN_ID }}/

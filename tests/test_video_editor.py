@@ -176,3 +176,4 @@ def test_final_export_produces_named_output(tmp_path):
         out = editor.final_export(video, "run-01102026-1427")
 
     assert out.name == "run-01102026-1427.mp4"
+
