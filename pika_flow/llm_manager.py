@@ -138,6 +138,10 @@ class LLMManager:
             self.logger.warn("llm_manager", f"Provider {provider['id']} failed: {exc}")
             return await self.call(task_type, payload, tried + [provider["id"]])
 
+        except Exception as exc:
+            self.logger.warn("llm_manager", f"Provider {provider['id']} encountered error: {exc}")
+            return await self.call(task_type, payload, tried + [provider["id"]])
+
     async def _do_request(self, provider: dict, payload: dict) -> dict:
         """Build provider‑specific request and call ConnectionManager."""
         secret_key = provider.get("secret_key")

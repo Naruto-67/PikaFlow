@@ -69,7 +69,8 @@ BANNED_MODALITY_PATTERNS = [
     r"guard", r"safeguard", r"deepseek-r1-distill-qwen-1\.5b",
     r"omni", r"imagen",
     r"orpheus", r"canopylabs", r"speech", r"voice", r"sound", r"realtime",
-    r"inkling",
+    r"inkling", r"lyria", r"banana", r"deep-research", r"antigravity",
+    r"computer-use", r"customtools", r"content-safety",
 ]
 
 def is_modality_allowed(model_name: str) -> bool:
@@ -84,7 +85,7 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
     expanded_providers = []
     
     for p in providers:
-        if p.get("base_url") == "local":
+        if "local" in p.get("base_url", ""):
             expanded_providers.append(p)
             continue
             
@@ -174,7 +175,7 @@ def _health_check(provider: dict) -> dict:
     Send a minimal request to the provider and return health metrics.
     Returns: {"ok": bool, "latency_ms": int, "status_code": int, "error": str|None}
     """
-    if provider.get("base_url") == "local":
+    if "local" in provider.get("base_url", ""):
         return {"ok": True, "latency_ms": 0, "status_code": 200, "error": None}
 
     api_key     = _get_api_key(provider.get("secret_key"))
@@ -223,7 +224,7 @@ def _health_check(provider: dict) -> dict:
         elif resp.status_code == 404:
             return {"ok": False, "latency_ms": latency, "status_code": 404, "error": "Model not found / deprecated"}
         elif resp.status_code == 429:
-            return {"ok": True,  "latency_ms": latency, "status_code": 429, "error": "Quota limit (model is live)"}
+            return {"ok": False, "latency_ms": 50000, "status_code": 429, "error": "Quota limit (rate-limited)"}
         else:
             return {"ok": False, "latency_ms": latency, "status_code": resp.status_code, "error": resp.text[:200]}
 
@@ -246,7 +247,7 @@ def run() -> None:
     # Test and benchmark EVERY discovered model
     tested_results = []
     for p in providers:
-        if p.get("base_url") == "local":
+        if "local" in p.get("base_url", ""):
             print(f"  ⚪ {p['name']:35s} — local model, skipping HTTP check")
             tested_results.append((p, {"ok": True, "latency_ms": 0, "status_code": 200, "error": None}))
             continue
@@ -274,8 +275,8 @@ def run() -> None:
             p["enabled"] = False
             print(f"    ⛔ Disabled (low success rate): {p['name']}")
 
-    # ── EMPIRICAL BENCHMARK RANKING ──
-    # Sort all text models purely by empirical speed & health
+    # ── EMPIRICAL BENCHMARK RANKING & INTERLEAVED SELECTION ──
+    # Sort all text models empirically, interleaving top models from each provider family
     def perf_rank(item):
         prov, res = item
         if not prov.get("enabled", True) or prov.get("deprecated", False):
@@ -285,14 +286,48 @@ def run() -> None:
         lat = res["latency_ms"] if res["latency_ms"] > 0 else 9999
         return int((1.0 - s_rate) * 1000 + lat)
 
+    def get_provider_family(p: dict) -> str:
+        pid = p.get("id", "").lower()
+        burl = p.get("base_url", "").lower()
+        if "gemini" in pid or "generativelanguage" in burl:
+            return "google"
+        elif "groq" in pid or "groq.com" in burl:
+            return "groq"
+        elif "openrouter" in pid or "openrouter" in burl or pid.startswith("or_"):
+            return "openrouter"
+        elif "huggingface" in pid or "huggingface" in burl:
+            return "huggingface"
+        return "other"
+
     text_items = [(p, r) for p, r in tested_results if p.get("type") == "text"]
     other_items = [(p, r) for p, r in tested_results if p.get("type") != "text"]
 
-    text_items.sort(key=perf_rank)
+    # Group text items by provider family
+    families: dict[str, list] = {}
+    for item in text_items:
+        fam = get_provider_family(item[0])
+        families.setdefault(fam, []).append(item)
 
-    # Assign priority 1..N dynamically based on empirical ranking
+    # Sort each family internally by empirical benchmark score (lowest score = fastest & healthiest)
+    for fam in families:
+        families[fam].sort(key=perf_rank)
+
+    # Interleave across provider families (Round 1: Best model of each provider, Round 2: 2nd best, etc.)
+    interleaved_text_items = []
+    family_order = sorted(
+        families.keys(),
+        key=lambda f: perf_rank(families[f][0]) if families[f] else 999999
+    )
+
+    max_len = max(len(items) for items in families.values()) if families else 0
+    for idx in range(max_len):
+        for fam in family_order:
+            if idx < len(families[fam]):
+                interleaved_text_items.append(families[fam][idx])
+
+    # Assign priority 1..N dynamically based on interleaved empirical ranking
     final_providers = []
-    for rank, (prov, _) in enumerate(text_items, start=1):
+    for rank, (prov, _) in enumerate(interleaved_text_items, start=1):
         prov["priority"] = rank
         final_providers.append(prov)
 
@@ -302,7 +337,7 @@ def run() -> None:
     _save_providers(final_providers)
     _save_performance(performance)
 
-    print(f"\n✅ Discovery & Benchmark complete — ranked {len(text_items)} text models empirically.")
+    print(f"\n✅ Discovery & Benchmark complete — ranked {len(interleaved_text_items)} text models empirically across {len(families)} provider families.")
 
 
 if __name__ == "__main__":
