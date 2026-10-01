@@ -161,10 +161,10 @@ async def run(spec_path: Path) -> None:
             f"Incorporate these trending keywords naturally: {keywords_hint}\n"
             f"CRITICAL: Write all numbers as full English words for TTS readability (e.g. 'one hundred twelve' instead of '112').\n\n"
             f"Return a JSON array of scenes. Each scene:\n"
-            f'{"prompt": "Stable Diffusion prompt for the scene visual", '
-            f'"description": "Narrator text for this scene", '
-            f'"title": "Scene title for chapters", '
-            f'"duration_s": <seconds as integer>}\n\n'
+            '{"prompt": "Stable Diffusion prompt for the scene visual", '
+            '"description": "Narrator text for this scene", '
+            '"title": "Scene title for chapters", '
+            '"duration_s": <seconds as integer>}\n\n'
             f"Use {_format_scene_count(fmt)} scenes. No extra text — JSON only."
         )
         def _validate_script_response(resp: dict) -> bool:
