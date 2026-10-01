@@ -42,10 +42,20 @@ class LLMManager:
         return [p for p in data["providers"] if p.get("enabled") and not p.get("deprecated")]
 
     def _load_quotas(self) -> dict:
-        return json.loads((_CFG_DIR / "quotas_state.json").read_text())
+        path = _CFG_DIR / "quotas_state.json"
+        if not path.exists():
+            return {
+                "run_id": "",
+                "providers": {},
+                "_meta": {"last_reset": datetime.now(timezone.utc).isoformat()}
+            }
+        return json.loads(path.read_text())
 
     def _load_performance(self) -> dict:
-        return json.loads((_CFG_DIR / "llm_performance.json").read_text())
+        path = _CFG_DIR / "llm_performance.json"
+        if not path.exists():
+            return {"providers": {}, "_meta": {"last_updated": datetime.now(timezone.utc).isoformat()}}
+        return json.loads(path.read_text())
 
     # ── Provider selection ─────────────────────────────────────────────────
 
