@@ -24,24 +24,7 @@ import requests
 
 _CFG_DIR = Path(__file__).parent.parent / "config"
 
-_TEST_PAYLOAD = {
-    "gemini": {
-        "contents": [{"parts": [{"text": "Reply with: OK"}]}]
-    },
-    "groq": {
-        "model": "llama-3.1-8b-instant",
-        "messages": [{"role": "user", "content": "Reply with: OK"}],
-        "max_tokens": 5,
-    },
-    "openrouter_mistral": {
-        "model": "meta-llama/llama-3.1-8b-instruct:free",
-        "messages": [{"role": "user", "content": "Reply with: OK"}],
-        "max_tokens": 5,
-    },
-    "huggingface_flan": {
-        "inputs": "Reply with: OK"
-    },
-}
+
 
 
 def _load_providers() -> list[dict]:
@@ -96,50 +79,71 @@ def is_modality_allowed(model_name: str) -> bool:
             return False
     return True
 
-def _refresh_model_ids(providers: list[dict]) -> None:
-    """Query each provider's /models endpoint to find the latest active/free model."""
+def _refresh_model_ids(providers: list[dict]) -> list[dict]:
+    """Query each provider's /models endpoint to find the latest active/free models, and expand them."""
+    expanded_providers = []
+    
     for p in providers:
         if p.get("base_url") == "local":
+            expanded_providers.append(p)
             continue
             
         api_key = _get_api_key(p.get("secret_key"))
-        if not api_key and p["id"] != "openrouter_mistral":
+        if not api_key and "openrouter" not in p["id"]:
+            expanded_providers.append(p)
             continue
             
-        if p["id"] == "gemini":
+        added = False
+        
+        if "gemini" in p["id"]:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
                 resp = requests.get(url, timeout=10)
                 if resp.status_code == 200:
                     models = [
                         m["name"].replace("models/", "") for m in resp.json().get("models", [])
-                        if "flash" in m["name"] and "generateContent" in m.get("supportedGenerationMethods", [])
+                        if "generateContent" in m.get("supportedGenerationMethods", [])
                     ]
                     valid_models = [m for m in models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
                     if valid_models:
-                        valid_models.sort(reverse=True) # Usually gemini-1.5-flash-002 > gemini-1.5-flash-001
-                        best_model = valid_models[0]
-                        p["model"] = best_model
-                        p["endpoint"] = f"v1beta/models/{best_model}:generateContent"
-                        print(f"  🔄 Discovered Gemini model: {best_model}")
+                        # Prefer flash/pro over older models
+                        valid_models.sort(key=lambda x: (1 if "pro" in x else 2 if "flash" in x else 3, x), reverse=False)
+                        for idx, best_model in enumerate(valid_models[:3]): # Top 3 gemini models
+                            new_p = p.copy()
+                            new_p["id"] = f"gemini_{best_model.replace('-', '_').replace('.', '_')}"
+                            new_p["name"] = f"Google ({best_model})"
+                            new_p["model"] = best_model
+                            new_p["endpoint"] = f"v1beta/models/{best_model}:generateContent"
+                            new_p["priority"] = (idx * 10) + 1  # 1, 11, 21
+                            expanded_providers.append(new_p)
+                            print(f"  🔄 Discovered Gemini model: {best_model}")
+                        added = True
             except Exception as e:
                 print(f"  ⚠️ Failed to discover Gemini models: {e}")
                 
-        elif p["id"] == "groq":
+        elif "groq" in p["id"]:
             try:
                 url = "https://api.groq.com/openai/v1/models"
                 resp = requests.get(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=10)
                 if resp.status_code == 200:
                     models = [m["id"] for m in resp.json().get("data", []) if m.get("active", True)]
                     valid_models = [m for m in models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
-                    llama = [m for m in valid_models if "llama-3" in m.lower() or "llama3" in m.lower()]
-                    best_model = llama[0] if llama else (valid_models[0] if valid_models else "llama3-8b-8192")
-                    p["model"] = best_model
-                    print(f"  🔄 Discovered Groq model: {best_model}")
+                    if valid_models:
+                        # Prefer llama-3.3, then llama-3.1, then mixtral
+                        valid_models.sort(key=lambda x: (1 if "llama-3.3" in x.lower() else 2 if "llama-3.1" in x.lower() else 3, x))
+                        for idx, best_model in enumerate(valid_models[:3]):
+                            new_p = p.copy()
+                            new_p["id"] = f"groq_{best_model.replace('-', '_').replace('.', '_')}"
+                            new_p["name"] = f"Groq ({best_model})"
+                            new_p["model"] = best_model
+                            new_p["priority"] = (idx * 10) + 2  # 2, 12, 22
+                            expanded_providers.append(new_p)
+                            print(f"  🔄 Discovered Groq model: {best_model}")
+                        added = True
             except Exception as e:
                 print(f"  ⚠️ Failed to discover Groq models: {e}")
                 
-        elif p["id"] == "openrouter_mistral":
+        elif "openrouter" in p["id"]:
             try:
                 url = "https://openrouter.ai/api/v1/models"
                 resp = requests.get(url, timeout=10)
@@ -150,12 +154,30 @@ def _refresh_model_ids(providers: list[dict]) -> None:
                     ]
                     valid_models = [m for m in free_models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
                     if valid_models:
-                        preferred = [m for m in valid_models if "mistral" in m.lower() or "llama" in m.lower()]
-                        best_model = preferred[0] if preferred else valid_models[0]
-                        p["model"] = best_model
-                        print(f"  🔄 Discovered OpenRouter model: {best_model}")
+                        # Prefer llama and mistral
+                        valid_models.sort(key=lambda x: (1 if "llama" in x.lower() else 2 if "mistral" in x.lower() else 3, x))
+                        for idx, best_model in enumerate(valid_models[:3]):
+                            new_p = p.copy()
+                            new_p["id"] = f"or_{best_model.split('/')[-1].replace('-', '_').replace('.', '_').replace(':', '_')}"
+                            new_p["name"] = f"OpenRouter ({best_model.split('/')[-1]})"
+                            new_p["model"] = best_model
+                            new_p["priority"] = (idx * 10) + 3  # 3, 13, 23
+                            expanded_providers.append(new_p)
+                            print(f"  🔄 Discovered OpenRouter model: {best_model}")
+                        added = True
             except Exception as e:
                 print(f"  ⚠️ Failed to discover OpenRouter models: {e}")
+        
+        elif "huggingface" in p["id"]:
+            # Keeping the default HF model as is
+            p["priority"] = 40
+            expanded_providers.append(p)
+            added = True
+            
+        if not added and p.get("type") == "text":
+            expanded_providers.append(p) # fallback if discovery failed
+            
+    return expanded_providers
 
 
 def _health_check(provider: dict) -> dict:
@@ -177,9 +199,17 @@ def _health_check(provider: dict) -> dict:
         else:
             headers[auth_header] = api_key
 
-    payload = _TEST_PAYLOAD.get(provider["id"], {"inputs": "OK"}).copy()
-    if "model" in payload:
-        payload["model"] = provider["model"]
+    # Build generic test payload based on API type
+    if "generativelanguage" in provider["base_url"]:
+        payload = {"contents": [{"parts": [{"text": "Reply with: OK"}]}]}
+    elif "api.groq.com" in provider["base_url"] or "openrouter" in provider["base_url"]:
+        payload = {
+            "model": provider["model"],
+            "messages": [{"role": "user", "content": "Reply with: OK"}],
+            "max_tokens": 5,
+        }
+    else:
+        payload = {"inputs": "Reply with: OK"}
 
     url = provider["base_url"] + provider["endpoint"]
     if "generativelanguage" in provider["base_url"] and api_key:
@@ -225,7 +255,7 @@ def run() -> None:
     providers   = _load_providers()
     performance = _load_performance()
 
-    _refresh_model_ids(providers)
+    providers = _refresh_model_ids(providers)
     
     for p in providers:
         if p.get("base_url") == "local":
