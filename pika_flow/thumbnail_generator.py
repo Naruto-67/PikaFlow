@@ -154,3 +154,4 @@ class ThumbnailGenerator:
             anchor="mm",
         )
         return img.convert("RGB")
+

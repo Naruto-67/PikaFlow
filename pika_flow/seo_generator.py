@@ -251,3 +251,4 @@ def _build_chapters(scenes: list[dict]) -> list[dict]:
         })
         t += scene.get("duration_s", 60)
     return chapters
+

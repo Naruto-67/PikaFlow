@@ -181,3 +181,4 @@ if __name__ == "__main__":
         thumb = Path(args.thumbnail) if args.thumbnail else None
         vid_id = upload_video(Path(args.video), meta, thumb, log)
         print(f"✅ Uploaded: https://youtu.be/{vid_id}")
+

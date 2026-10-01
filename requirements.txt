@@ -16,4 +16,6 @@ pytrends>=4.9.2
 praw>=7.7.1
 google-auth-oauthlib>=1.2.0
 google-auth>=2.29.0
+gTTS>=2.5.1
+scipy>=1.13.0
 
