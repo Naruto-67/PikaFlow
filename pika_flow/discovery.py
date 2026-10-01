@@ -58,10 +58,44 @@ import re
 DEPRECATED_KNOWN = {
     "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash",
     "gemini-1.5-flash-8b", "gemini-1.5-pro", "gemini-2.0-pro",
-    "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite",
     "mixtral-8x7b-32768", "gemma2-9b-it", "llama3-70b-8192", "llama3-8b-8192",
+    "llama-3.1-70b-versatile", "llama-3.1-8b-instant",
     "mistralai/mistral-7b-instruct:free"
 }
+
+def _load_banned_models() -> set[str]:
+    path = _CFG_DIR / "banned_models.json"
+    banned = set(DEPRECATED_KNOWN)
+    if path.exists():
+        try:
+            data = json.loads(path.read_text())
+            banned.update(data.get("banned_models", []))
+        except Exception:
+            pass
+    return banned
+
+
+def _add_banned_model(model_name: str) -> None:
+    if not model_name:
+        return
+    path = _CFG_DIR / "banned_models.json"
+    current_banned = list(DEPRECATED_KNOWN)
+    if path.exists():
+        try:
+            current_banned = json.loads(path.read_text()).get("banned_models", current_banned)
+        except Exception:
+            pass
+    if model_name not in current_banned:
+        current_banned.append(model_name)
+        data = {
+            "banned_models": sorted(list(set(current_banned))),
+            "_meta": {
+                "description": "Permanently banned or decommissioned models. Auto-updated when discovery or LLM manager detects 404/decommissioned responses.",
+                "last_updated": datetime.now(timezone.utc).isoformat()
+            }
+        }
+        path.write_text(json.dumps(data, indent=2))
+
 
 BANNED_MODALITY_PATTERNS = [
     r"image", r"picture", r"tts", r"audio", r"live", r"embed",
@@ -80,7 +114,18 @@ def is_modality_allowed(model_name: str) -> bool:
             return False
     return True
 
-def _refresh_model_ids(providers: list[dict]) -> list[dict]:
+def is_model_allowed(model_name: str, banned: set[str]) -> bool:
+    if not is_modality_allowed(model_name):
+        return False
+    lowered = model_name.lower()
+    if lowered in banned or model_name in banned:
+        return False
+    for b in banned:
+        if b.lower() == lowered:
+            return False
+    return True
+
+def _refresh_model_ids(providers: list[dict], banned_models: set[str]) -> list[dict]:
     """Query each provider's /models endpoint to discover ALL active/free models without hardcoded limits."""
     expanded_providers = []
     
@@ -105,7 +150,7 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
                         m["name"].replace("models/", "") for m in resp.json().get("models", [])
                         if "generateContent" in m.get("supportedGenerationMethods", [])
                     ]
-                    valid_models = [m for m in models if is_modality_allowed(m)]
+                    valid_models = [m for m in models if is_model_allowed(m, banned_models)]
                     for m in valid_models:
                         new_p = p.copy()
                         new_p["id"] = f"gemini_{m.replace('-', '_').replace('.', '_')}"
@@ -125,7 +170,7 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
                 resp = requests.get(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=10)
                 if resp.status_code == 200:
                     models = [m["id"] for m in resp.json().get("data", []) if m.get("active", True)]
-                    valid_models = [m for m in models if is_modality_allowed(m)]
+                    valid_models = [m for m in models if is_model_allowed(m, banned_models)]
                     for m in valid_models:
                         new_p = p.copy()
                         new_p["id"] = f"groq_{m.replace('-', '_').replace('.', '_')}"
@@ -147,7 +192,7 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
                         m["id"] for m in resp.json().get("data", [])
                         if m.get("pricing", {}).get("prompt") == "0" and m.get("pricing", {}).get("completion") == "0"
                     ]
-                    valid_models = [m for m in free_models if is_modality_allowed(m)]
+                    valid_models = [m for m in free_models if is_model_allowed(m, banned_models)]
                     for m in valid_models:
                         new_p = p.copy()
                         new_p["id"] = f"or_{m.split('/')[-1].replace('-', '_').replace('.', '_').replace(':', '_')}"
@@ -161,11 +206,13 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
                 print(f"  ⚠️ Failed to discover OpenRouter models: {e}")
         
         elif "huggingface" in p["id"]:
-            expanded_providers.append(p)
-            added = True
+            if is_model_allowed(p.get("model", ""), banned_models):
+                expanded_providers.append(p)
+                added = True
             
         if not added and p.get("type") == "text":
-            expanded_providers.append(p)
+            if is_model_allowed(p.get("model", ""), banned_models):
+                expanded_providers.append(p)
             
     return expanded_providers
 
@@ -240,9 +287,10 @@ def run() -> None:
 
     base_providers = _load_providers()
     performance    = _load_performance()
+    banned_models  = _load_banned_models()
 
-    # Discover ALL free text models across provider catalogs
-    providers = _refresh_model_ids(base_providers)
+    # Discover ALL free text models across provider catalogs (excluding permanently banned)
+    providers = _refresh_model_ids(base_providers, banned_models)
     
     # Test and benchmark EVERY discovered model
     tested_results = []
@@ -264,12 +312,14 @@ def run() -> None:
         prev_rate = perf.get("success_rate") or (1.0 if result["ok"] else 0.0)
         perf["success_rate"] = round(0.7 * prev_rate + 0.3 * (1.0 if result["ok"] else 0.0), 3)
 
-        # Automatically deprecate on 404 or decommissioned error
+        # Automatically permanently ban on 404 or decommissioned error
         err_msg = str(result.get("error") or "").lower()
         if result["status_code"] in (400, 404) and ("decommissioned" in err_msg or "not found" in err_msg or result["status_code"] == 404):
             p["deprecated"] = True
             p["enabled"] = False
-            print(f"    ⚠️  Marked as deprecated/decommissioned: {p['name']}")
+            _add_banned_model(p.get("model", ""))
+            banned_models.add(p.get("model", ""))
+            print(f"    🚫 Permanently banned & decommissioned: {p['name']} ({p.get('model')})")
 
         if perf["success_rate"] < 0.2:
             p["enabled"] = False
@@ -279,7 +329,7 @@ def run() -> None:
     # Sort all text models empirically, interleaving top models from each provider family
     def perf_rank(item):
         prov, res = item
-        if not prov.get("enabled", True) or prov.get("deprecated", False):
+        if not prov.get("enabled", True) or prov.get("deprecated", False) or prov.get("model") in banned_models:
             return 999999
         p_perf = performance.get("providers", {}).get(prov["id"], {})
         s_rate = p_perf.get("success_rate", 1.0 if res["ok"] else 0.0)
@@ -334,10 +384,16 @@ def run() -> None:
     for prov, _ in other_items:
         final_providers.append(prov)
 
+    # Permanently exclude all deprecated or banned providers so they NEVER exist in llm_providers.json
+    final_providers = [
+        prov for prov in final_providers
+        if not prov.get("deprecated", False) and prov.get("model") not in banned_models
+    ]
+
     _save_providers(final_providers)
     _save_performance(performance)
 
-    print(f"\n✅ Discovery & Benchmark complete — ranked {len(interleaved_text_items)} text models empirically across {len(families)} provider families.")
+    print(f"\n✅ Discovery & Benchmark complete — ranked {len(final_providers)} active models empirically across {len(families)} provider families (banned {len(banned_models)} models).")
 
 
 if __name__ == "__main__":

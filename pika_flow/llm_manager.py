@@ -37,9 +37,43 @@ class LLMManager:
 
     # ── Loaders ────────────────────────────────────────────────────────────
 
+    def _load_banned(self) -> set[str]:
+        path = _CFG_DIR / "banned_models.json"
+        if not path.exists():
+            return set()
+        try:
+            return set(json.loads(path.read_text()).get("banned_models", []))
+        except Exception:
+            return set()
+
+    def _ban_model(self, model_name: str) -> None:
+        if not model_name:
+            return
+        path = _CFG_DIR / "banned_models.json"
+        banned = []
+        if path.exists():
+            try:
+                banned = json.loads(path.read_text()).get("banned_models", [])
+            except Exception:
+                pass
+        if model_name not in banned:
+            banned.append(model_name)
+            path.write_text(json.dumps({
+                "banned_models": sorted(list(set(banned))),
+                "_meta": {
+                    "description": "Permanently banned or decommissioned models. Auto-updated when discovery or LLM manager detects 404/decommissioned responses.",
+                    "last_updated": datetime.now(timezone.utc).isoformat()
+                }
+            }, indent=2))
+            self.logger.warn("llm_manager", f"🚫 Permanently banned decommissioned model: {model_name}")
+
     def _load_providers(self) -> list[dict]:
+        banned = self._load_banned()
         data = json.loads((_CFG_DIR / "llm_providers.json").read_text())
-        return [p for p in data["providers"] if p.get("enabled") and not p.get("deprecated")]
+        return [
+            p for p in data["providers"]
+            if p.get("enabled") and not p.get("deprecated") and p.get("model") not in banned
+        ]
 
     def _load_quotas(self) -> dict:
         path = _CFG_DIR / "quotas_state.json"
@@ -135,10 +169,18 @@ class LLMManager:
             return await self.call(task_type, payload, tried + [provider["id"]])
 
         except PikaConnectionError as exc:
+            err_str = str(exc).lower()
+            if "404" in err_str or "decommissioned" in err_str or "not found" in err_str:
+                self._ban_model(provider.get("model", ""))
+                self._disable_provider(provider["id"])
             self.logger.warn("llm_manager", f"Provider {provider['id']} failed: {exc}")
             return await self.call(task_type, payload, tried + [provider["id"]])
 
         except Exception as exc:
+            err_str = str(exc).lower()
+            if "404" in err_str or "decommissioned" in err_str or "not found" in err_str:
+                self._ban_model(provider.get("model", ""))
+                self._disable_provider(provider["id"])
             self.logger.warn("llm_manager", f"Provider {provider['id']} encountered error: {exc}")
             return await self.call(task_type, payload, tried + [provider["id"]])
 

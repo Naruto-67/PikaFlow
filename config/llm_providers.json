@@ -18,12 +18,12 @@
       "deprecated": false
     },
     {
-      "id": "gemini_2_0",
-      "name": "Google Gemini 2.0 Flash",
-      "model": "gemini-2.0-flash",
+      "id": "gemini_3_flash",
+      "name": "Google Gemini 3 Flash Preview",
+      "model": "gemini-3-flash-preview",
       "type": "text",
       "base_url": "https://generativelanguage.googleapis.com/",
-      "endpoint": "v1beta/models/gemini-2.0-flash:generateContent",
+      "endpoint": "v1beta/models/gemini-3-flash-preview:generateContent",
       "auth_header": "x-goog-api-key",
       "secret_key": "GEMINI_API_KEY",
       "quota": {
