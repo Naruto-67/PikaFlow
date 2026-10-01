@@ -196,8 +196,29 @@ class DiffusionWrapper:
         self.log.step("diffusion", f"Attempting Cloud GPU Space: {space_id}…")
 
         try:
-            client = Client(space_id, hf_token=self.hf_key or None)
-            job = client.submit(prompt, api_name="/predict")
+            client = None
+            auth_kwargs = [{"token": self.hf_key}, {"hf_token": self.hf_key}, {}] if self.hf_key else [{}]
+            for kw in auth_kwargs:
+                try:
+                    client = Client(space_id, **kw)
+                    break
+                except TypeError:
+                    continue
+
+            if client is None:
+                client = Client(space_id)
+
+            job = None
+            for api in ["/predict", "/generate", None]:
+                try:
+                    job = client.submit(prompt, api_name=api) if api else client.submit(prompt)
+                    break
+                except Exception:
+                    continue
+
+            if job is None:
+                raise RuntimeError(f"Could not submit job to Space {space_id}")
+
             # Up to 45 seconds timeout for remote cloud generation
             result_path = job.result(timeout=45)
 
@@ -262,20 +283,25 @@ class DiffusionWrapper:
         return None
 
     def _pollinations_image(self, prompt: str, width: int, height: int) -> Image.Image | None:
-        """Pollinations AI — free tier, zero auth, high-res FLUX anime visuals."""
-        try:
-            seed = abs(hash(prompt)) % 1000000
-            encoded = urllib.parse.quote(prompt[:300])
-            url = f"{_POLLINATIONS_BASE_URL}/{encoded}?width={width}&height={height}&model=flux&nologo=true&seed={seed}"
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-            resp = requests.get(url, headers=headers, timeout=25)
-            resp.raise_for_status()
-            img = Image.open(io.BytesIO(resp.content)).convert("RGB")
-            self.log.info("diffusion", f"Pollinations Flux visual generated ({width}x{height})")
-            return img
-        except Exception as exc:  # noqa: BLE001
-            self.log.warn("diffusion", f"Pollinations visual generation failed: {exc}")
-            return None
+        """Pollinations AI — free tier, zero auth, high-res FLUX/Turbo anime visuals."""
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        seed = abs(hash(prompt)) % 1000000
+        encoded = urllib.parse.quote(prompt[:300])
+
+        # Try flux first with 45s timeout, then fast turbo fallback (1-3s generation)
+        candidates = [("flux", 45), ("turbo", 25)]
+        for model_name, timeout_s in candidates:
+            try:
+                url = f"{_POLLINATIONS_BASE_URL}/{encoded}?width={width}&height={height}&model={model_name}&nologo=true&seed={seed}"
+                resp = requests.get(url, headers=headers, timeout=timeout_s)
+                if resp.status_code == 200 and len(resp.content) > 1000:
+                    img = Image.open(io.BytesIO(resp.content)).convert("RGB")
+                    self.log.info("diffusion", f"Pollinations {model_name.upper()} visual generated ({width}x{height})")
+                    return img
+            except Exception as exc:  # noqa: BLE001
+                self.log.warn("diffusion", f"Pollinations (model={model_name}) failed: {exc}")
+
+        return None
 
     # ── Cinematic Ken Burns Motion Engine ─────────────────────────────────
 

@@ -75,7 +75,11 @@ jobs:
     name: 🎬 Clip Generation
     needs: init
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     env:
+      GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN:             ${{ secrets.GITHUB_TOKEN }}
       GEMINI_API_KEY:       ${{ secrets.GEMINI_API_KEY }}
       GROQ_API_KEY:         ${{ secrets.GROQ_API_KEY }}
       OPENROUTER_API_KEY:   ${{ secrets.OPENROUTER_API_KEY }}
@@ -115,10 +119,10 @@ jobs:
       - name: Discover and benchmark live models
         run: python -m pika_flow.discovery || true
 
-      - name: Generate clips
+      - name: Generate clips and pipeline assets
         run: python -m pika_flow.orchestrator pika_work/${{ env.RUN_ID }}/run_spec.json
 
-      - name: Upload generated clips
+      - name: Upload run assets and clips
         uses: actions/upload-artifact@v7
         with:
           name: clips-${{ env.RUN_ID }}
@@ -143,10 +147,6 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
 
       - name: Install FFmpeg
         run: sudo apt-get install -y ffmpeg
@@ -179,10 +179,17 @@ jobs:
     env:
       RUN_ID: ${{ needs.init.outputs.run_id }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Download clips and pipeline metadata
+        uses: actions/download-artifact@v7
+        with:
+          name: clips-${{ env.RUN_ID }}
+          path: pika_work/${{ env.RUN_ID }}/
 
       - name: Download final video
         uses: actions/download-artifact@v7
@@ -190,21 +197,33 @@ jobs:
           name: final-${{ env.RUN_ID }}
           path: pika_work/${{ env.RUN_ID }}/
 
-      - name: Download spec (for logs)
-        uses: actions/download-artifact@v7
-        with:
-          name: run-spec-${{ env.RUN_ID }}
-          path: pika_work/${{ env.RUN_ID }}/
-
-      - name: Create release
+      - name: Create or update GitHub release
         run: |
-          gh release create "${{ env.RUN_ID }}" \
-            --title "🌸 PikaFlow ${{ env.RUN_ID }}" \
-            --notes "Automated Animerise video run." \
-            pika_work/${{ env.RUN_ID }}/${{ env.RUN_ID }}.mp4 \
-            pika_work/${{ env.RUN_ID }}/log.jsonl \
-            pika_work/${{ env.RUN_ID }}/summary.md \
-            pika_work/${{ env.RUN_ID }}/run_spec.json
+          ASSETS=()
+          for f in pika_work/${{ env.RUN_ID }}/${{ env.RUN_ID }}.mp4 \
+                   pika_work/${{ env.RUN_ID }}/thumbnail.jpg \
+                   pika_work/${{ env.RUN_ID }}/seo_metadata.json \
+                   pika_work/${{ env.RUN_ID }}/seo_brief.json \
+                   pika_work/${{ env.RUN_ID }}/run_spec.json \
+                   pika_work/${{ env.RUN_ID }}/log.jsonl \
+                   pika_work/${{ env.RUN_ID }}/summary.md; do
+            if [ -f "$f" ]; then
+              ASSETS+=("$f")
+            fi
+          done
+
+          if gh release view "${{ env.RUN_ID }}" >/dev/null 2>&1; then
+            echo "Release ${{ env.RUN_ID }} already exists. Syncing assets..."
+            if [ ${#ASSETS[@]} -gt 0 ]; then
+              gh release upload "${{ env.RUN_ID }}" "${ASSETS[@]}" --clobber || true
+            fi
+          else
+            echo "Creating new release ${{ env.RUN_ID }} with ${#ASSETS[@]} assets..."
+            gh release create "${{ env.RUN_ID }}" \
+              --title "🌸 PikaFlow ${{ env.RUN_ID }}" \
+              --notes "Automated Animerise video run." \
+              "${ASSETS[@]}"
+          fi
 
       - name: Discord alert (optional)
         if: ${{ env.DISCORD_WEBHOOK_URL != '' }}

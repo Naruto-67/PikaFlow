@@ -81,10 +81,30 @@ class AudioGenerator:
             self.log.info("audio_generator", f"Narration ready → {out.name}")
             return out
 
-        success = self._bark_tts(script, out)
-        if not success:
-            self.log.warn("audio_generator", "Bark failed — falling back to gTTS")
-            self._gtts_fallback(script, out)
+        # Check if GPU is available or Bark is explicitly requested
+        use_bark = False
+        try:
+            import torch
+            if torch.cuda.is_available() or os.environ.get("USE_BARK", "").lower() in ("1", "true", "yes"):
+                use_bark = True
+        except ImportError:
+            pass
+
+        if use_bark:
+            self.log.info("audio_generator", "GPU detected or USE_BARK enabled — running Bark TTS")
+            success = self._bark_tts(script, out)
+            if not success:
+                self.log.warn("audio_generator", "Bark failed — falling back to gTTS")
+                self._gtts_fallback(script, out)
+        else:
+            self.log.info("audio_generator", "Running fast cloud-ready TTS (gTTS)")
+            try:
+                self._gtts_fallback(script, out)
+            except Exception as exc:
+                self.log.warn("audio_generator", f"gTTS failed: {exc} — attempting Bark fallback")
+                if not self._bark_tts(script, out):
+                    self.log.warn("audio_generator", "Bark fallback also failed — creating silent audio")
+                    self._silent_audio(out, duration_s=10)
 
         self.log.info("audio_generator", f"Narration ready → {out.name}")
         return out

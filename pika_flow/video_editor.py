@@ -200,3 +200,78 @@ class VideoEditor:
             self.log.error("video_editor", f"{label} failed:\n{result.stderr[-500:]}")
             raise RuntimeError(f"FFmpeg {label} failed (exit {result.returncode})")
 
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="PikaFlow video editor CLI")
+    parser.add_argument("work_dir", help="Path to working directory containing clips and run_spec.json")
+    parser.add_argument("--force", action="store_true", help="Force re-rendering even if final video exists")
+    args = parser.parse_args()
+
+    work_path = Path(args.work_dir)
+    if not work_path.exists():
+        print(f"Error: Directory {work_path} does not exist", file=sys.stderr)
+        sys.exit(1)
+
+    spec_file = work_path / "run_spec.json"
+    run_id = work_path.name
+    if spec_file.exists():
+        try:
+            spec_data = json.loads(spec_file.read_text())
+            run_id = spec_data.get("run_id", run_id)
+        except Exception:
+            pass
+
+    log = PikaLogger(run_id=run_id, log_dir=work_path)
+    final_video = work_path / f"{run_id}.mp4"
+
+    if final_video.exists() and final_video.stat().st_size > 1000 and not args.force:
+        log.info("video_editor", f"Final video verified and ready: {final_video.name} ({final_video.stat().st_size} bytes)")
+        sys.exit(0)
+
+    clips = sorted(work_path.glob("clip_*.mp4"))
+    if not clips:
+        log.error("video_editor", f"No clips (clip_*.mp4) found in {work_path}")
+        sys.exit(1)
+
+    editor = VideoEditor(logger=log, work_dir=work_path)
+    stitched = editor.add_transitions(clips)
+
+    seo_file = work_path / "seo_metadata.json"
+    if seo_file.exists():
+        try:
+            meta = json.loads(seo_file.read_text())
+            chapters = meta.get("chapters") or []
+            caption_list = []
+            for ch in chapters:
+                if isinstance(ch, dict):
+                    t_str = str(ch.get("time", "0:00"))
+                    parts = t_str.split(":")
+                    sec = 0.0
+                    if len(parts) == 2:
+                        sec = int(parts[0]) * 60 + int(parts[1])
+                    elif len(parts) == 3:
+                        sec = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                    caption_list.append({
+                        "text": ch.get("label", ""),
+                        "start": sec,
+                        "end": sec + 3.0,
+                    })
+            if caption_list:
+                stitched = editor.overlay_captions(stitched, caption_list)
+        except Exception as exc:  # noqa: BLE001
+            log.warn("video_editor", f"Failed overlaying captions: {exc}")
+
+    narration = work_path / "narration.wav"
+    bg_music = work_path / "bg_music_trimmed.mp3"
+    if not bg_music.exists():
+        bg_music = None
+
+    if narration.exists():
+        stitched = editor.mix_audio(stitched, narration, bg_music)
+
+    exported = editor.final_export(stitched, run_id)
+    log.info("video_editor", f"Video exported successfully: {exported.name}")
+
