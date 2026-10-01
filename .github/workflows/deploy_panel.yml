@@ -1,0 +1,45 @@
+name: 🌐 Deploy Dev Panel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'panel/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build & Deploy to GitHub Pages
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: panel/package.json
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: panel
+
+      - name: Build
+        run: npm run build
+        working-directory: panel
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir:  ./panel/dist
+          force_orphan: true
+
