@@ -1,0 +1,17 @@
+# Normalise line endings: LF in the repo, CRLF on Windows checkouts
+* text=auto eol=lf
+
+# Force LF for these file types regardless of platform
+*.py    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.sh    text eol=lf
+
+# Binaries – no line‑ending conversion
+*.mp4   binary
+*.png   binary
+*.jpg   binary
+*.svg   binary
