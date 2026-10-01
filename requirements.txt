@@ -12,4 +12,8 @@ Pillow>=10.3.0
 jsonschema>=4.22.0
 requests>=2.31.0
 tqdm>=4.66.0
+pytrends>=4.9.2
+praw>=7.7.1
+google-auth-oauthlib>=1.2.0
+google-auth>=2.29.0
 
