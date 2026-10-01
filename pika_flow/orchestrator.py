@@ -148,12 +148,12 @@ async def run(spec_path: Path) -> None:
 
     try:
         # ── Stage 1: SEO Research ──────────────────────────────────────────
-        log.step("orchestrator", "▶ Stage 1 — SEO Research")
+        log.stage(1, "SEO Research")
         seo = SEOGenerator(logger=log, llm=llm, work_dir=work)
         brief = await seo.research(niche=niche, base_prompt=prompt)
 
         # ── Stage 2: Script Generation ─────────────────────────────────────
-        log.step("orchestrator", "▶ Stage 2 — Script Generation")
+        log.stage(2, "Script Generation")
         keywords_hint = ", ".join(brief.get("keywords", [])[:5])
         script_prompt = (
             f"You are a creative YouTube scriptwriter specialising in {niche} content.\n"
@@ -161,10 +161,10 @@ async def run(spec_path: Path) -> None:
             f"Incorporate these trending keywords naturally: {keywords_hint}\n"
             f"CRITICAL: Write all numbers as full English words for TTS readability (e.g. 'one hundred twelve' instead of '112').\n\n"
             f"Return a JSON array of scenes. Each scene:\n"
-            f'{{"prompt": "Stable Diffusion prompt for the scene visual", '
+            f'{"prompt": "Stable Diffusion prompt for the scene visual", '
             f'"description": "Narrator text for this scene", '
             f'"title": "Scene title for chapters", '
-            f'"duration_s": <seconds as integer>}}\n\n'
+            f'"duration_s": <seconds as integer>}\n\n'
             f"Use {_format_scene_count(fmt)} scenes. No extra text — JSON only."
         )
         def _validate_script_response(resp: dict) -> bool:
@@ -187,7 +187,7 @@ async def run(spec_path: Path) -> None:
 
         # Persist updated spec with scenes
         spec_path.write_text(json.dumps(spec, indent=2))
-        
+
         # Log the script so it appears in the Dev Panel
         formatted_script = "\n\n".join([
             f"Scene {i+1}: {s.get('description', '')}"
@@ -196,7 +196,7 @@ async def run(spec_path: Path) -> None:
         log.info("orchestrator", f"Script ready — {len(scenes)} scenes\n\n{formatted_script}", {"format": fmt})
 
         # ── Stage 3: SEO Metadata ──────────────────────────────────────────
-        log.step("orchestrator", "▶ Stage 3 — SEO Metadata Generation")
+        log.stage(3, "SEO Metadata Generation")
         narrator_text = " ".join(s.get("description", "") for s in scenes)
         metadata = await seo.generate_metadata(
             script=narrator_text,
@@ -206,7 +206,7 @@ async def run(spec_path: Path) -> None:
         log.info("orchestrator", f"SEO title: {metadata.get('title', 'N/A')}")
 
         # ── Stage 4: Video Clip Generation ────────────────────────────────
-        log.step("orchestrator", "▶ Stage 4 — Video Clip Generation")
+        log.stage(4, "Video Clip Generation")
         clips = await generate_clips(
             spec=spec,
             scenes=scenes,
@@ -216,12 +216,12 @@ async def run(spec_path: Path) -> None:
         log.info("orchestrator", f"{len(clips)} clips generated")
 
         # ── Stage 5: Narration + Music ────────────────────────────────────
-        log.step("orchestrator", "▶ Stage 5 — Audio Generation")
+        log.stage(5, "Audio Generation")
         audio = AudioGenerator(logger=log, work_dir=work)
         narration = audio.generate_narration(narrator_text)
 
         total_duration = sum(s.get("duration_s", 4) for s in scenes)
-        
+
         bg_music = None
         if spec.get("use_music", True):
             tags = metadata.get("tags") or ["background music"]
@@ -232,7 +232,7 @@ async def run(spec_path: Path) -> None:
             )
 
         # ── Stage 6: Video Editing ─────────────────────────────────────────
-        log.step("orchestrator", "▶ Stage 6 — Video Editing")
+        log.stage(6, "Video Editing")
         editor   = VideoEditor(logger=log, work_dir=work)
         stitched = editor.add_transitions(clips)
 
@@ -256,7 +256,7 @@ async def run(spec_path: Path) -> None:
         final_video = editor.final_export(stitched, run_id)
 
         # ── Stage 7: Thumbnail Generation ─────────────────────────────────
-        log.step("orchestrator", "▶ Stage 7 — Thumbnail Generation")
+        log.stage(7, "Thumbnail Generation")
         thumb_gen = ThumbnailGenerator(logger=log, work_dir=work)
         thumbnail = await thumb_gen.generate(
             prompt=metadata.get("thumbnail_prompt", prompt),
@@ -265,7 +265,7 @@ async def run(spec_path: Path) -> None:
         )
 
         # ── Stage 8: GitHub Release ────────────────────────────────────────
-        log.step("orchestrator", "▶ Stage 8 — GitHub Release")
+        log.stage(8, "GitHub Release")
         assets = [
             a for a in [
                 final_video,
@@ -296,7 +296,7 @@ async def run(spec_path: Path) -> None:
         yt_client_id = os.environ.get("YOUTUBE_CLIENT_ID", "")
         if yt_client_id and final_video.exists():
             if spec.get("upload_to_youtube", False):
-                log.step("orchestrator", "▶ Stage 9 — YouTube Upload")
+                log.stage(9, "YouTube Upload")
                 try:
                     from pika_flow.youtube_uploader import upload_video
                     vid_id = upload_video(final_video, metadata, thumbnail, log)
@@ -312,9 +312,7 @@ async def run(spec_path: Path) -> None:
         log.done(f"Pipeline complete ✅  |  Run: {run_id}  |  Release: {release_url}")
 
     except Exception as exc:  # noqa: BLE001
-        log.error("orchestrator", f"Pipeline failed: {exc}")
-        import traceback
-        log.error("orchestrator", traceback.format_exc())
+        log.error("orchestrator", f"Pipeline failed: {exc}", exc=exc)
         sys.exit(1)
 
     finally:
