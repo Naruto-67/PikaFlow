@@ -211,7 +211,7 @@ Return ONLY valid JSON in this exact structure:
         """Extract and parse JSON block from LLM text output."""
         brief = fallback_brief or {}
         default_tags = brief.get("keywords") or ["viral", "trending", "ai", "video", "shorts", "background music"]
-        default_title = (brief.get("base_prompt") or "PikaFlow Feature")[:60].strip()
+        default_title = (brief.get("base_prompt") or "Untitled Video")[:60].strip()
 
         if text and text.strip():
             # Strip <think>...</think>
@@ -247,7 +247,7 @@ Return ONLY valid JSON in this exact structure:
                     pass
 
         return {
-            "title": default_title if default_title else "PikaFlow Feature",
+            "title": default_title if default_title else "Untitled Video",
             "description": f"Video discussing {brief.get('base_prompt', 'trending themes')}.",
             "tags": default_tags,
             "hashtags": ["#viral", "#trending"],
