@@ -74,6 +74,13 @@ class ConnectionManager:
                     )
                     raise PikaQuotaError(f"Quota exhausted: {base_url}{endpoint}")
 
+                if resp.status_code >= 400:
+                    logger.error("[ConnectionManager] HTTP %d: %s", resp.status_code, resp.text)
+                if resp.status_code >= 400:
+                    logger.error(
+                        "[ConnectionManager] HTTP %d | Body: %s",
+                        resp.status_code, resp.text
+                    )
                 resp.raise_for_status()
                 return resp
 

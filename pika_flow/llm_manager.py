@@ -159,20 +159,48 @@ class LLMManager:
         # All callers currently pass the Gemini payload: {"contents": [{"parts": [{"text": "..."}]}]}
         is_openai = "openai" in provider["endpoint"] or "openrouter" in provider["base_url"]
         is_hf = "huggingface" in provider["base_url"]
+        is_gemini = "generativelanguage" in provider["base_url"]
+
+        base_url = provider["base_url"]
+        endpoint = provider["endpoint"]
+        
+        # Sanitize slashes for httpx URL joining
+        if not base_url.endswith("/"):
+            base_url += "/"
+        if endpoint.startswith("/"):
+            endpoint = endpoint[1:]
+            
+        if is_gemini and api_key:
+            # Gemini strongly prefers API key in query string
+            sep = "&" if "?" in endpoint else "?"
+            endpoint = f"{endpoint}{sep}key={api_key}"
+            # Ensure Gemini payload has role
+            if "contents" in payload and len(payload["contents"]) > 0:
+                if "role" not in payload["contents"][0]:
+                    payload["contents"][0]["role"] = "user"
 
         if "contents" in payload:
-            text = payload["contents"][0]["parts"][0]["text"]
-            if is_openai:
+            try:
+                text = payload["contents"][0]["parts"][0]["text"]
+            except (KeyError, IndexError):
+                text = ""
+
+            if is_openai and text:
                 payload = {
                     "model": provider["model"],
-                    "messages": [{"role": "user", "content": text}]
+                    "messages": [{"role": "user", "content": text}],
+                    "temperature": 0.7
                 }
-            elif is_hf:
+            elif is_hf and text:
                 payload = {"inputs": text}
 
+        if "openrouter" in base_url:
+            headers["HTTP-Referer"] = "https://github.com/Naruto-67/PikaFlow"
+            headers["X-Title"] = "PikaFlow"
+
         resp = await self._conn.request(
-            base_url=provider["base_url"],
-            endpoint=provider["endpoint"],
+            base_url=base_url,
+            endpoint=endpoint,
             method="POST",
             json=payload,
             headers=headers,

@@ -115,6 +115,26 @@ Every run creates a GitHub Release tagged `run-ddmmyyyy-hhmm`
 
 ---
 
+## 📺 YouTube Auto-Upload (Optional)
+
+PikaFlow can automatically upload final videos to YouTube (set to Private initially).
+To authenticate securely without browser prompts on the GitHub Actions runner, you must generate an OAuth refresh token locally first:
+
+1. Create a project in Google Cloud Console, enable **YouTube Data API v3**, and download your OAuth `client_secrets.json` file.
+2. Run the local auth flow:
+   ```bash
+   pip install google-auth-oauthlib
+   python -m pika_flow.youtube_uploader --auth
+   ```
+3. Follow the prompt to authenticate in your browser. The script will output three keys. Add them to your GitHub Repository Secrets:
+   - `YOUTUBE_CLIENT_ID`
+   - `YOUTUBE_CLIENT_SECRET`
+   - `YOUTUBE_REFRESH_TOKEN`
+
+You can enable or disable YouTube uploads on a per-run basis via the Dev Panel toggle.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

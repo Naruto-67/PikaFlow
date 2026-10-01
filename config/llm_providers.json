@@ -5,11 +5,14 @@
       "name": "Google Gemini",
       "model": "gemini-1.5-flash",
       "type": "text",
-      "base_url": "https://generativelanguage.googleapis.com",
-      "endpoint": "/v1beta/models/gemini-1.5-flash:generateContent",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-1.5-flash:generateContent",
       "auth_header": "x-goog-api-key",
       "secret_key": "GEMINI_API_KEY",
-      "quota": { "requests_per_day": 1500, "reset": "daily" },
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
       "priority": 1,
       "enabled": true,
       "deprecated": false
@@ -19,11 +22,14 @@
       "name": "Groq",
       "model": "llama3-8b-8192",
       "type": "text",
-      "base_url": "https://api.groq.com",
-      "endpoint": "/openai/v1/chat/completions",
+      "base_url": "https://api.groq.com/",
+      "endpoint": "openai/v1/chat/completions",
       "auth_header": "Authorization",
       "secret_key": "GROQ_API_KEY",
-      "quota": { "requests_per_minute": 30, "reset": "per_minute" },
+      "quota": {
+        "requests_per_minute": 30,
+        "reset": "per_minute"
+      },
       "priority": 2,
       "enabled": true,
       "deprecated": false
@@ -33,11 +39,14 @@
       "name": "OpenRouter (Mistral 7B)",
       "model": "mistralai/mistral-7b-instruct:free",
       "type": "text",
-      "base_url": "https://openrouter.ai",
-      "endpoint": "/api/v1/chat/completions",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
       "auth_header": "Authorization",
       "secret_key": "OPENROUTER_API_KEY",
-      "quota": { "tokens_per_day": 25000, "reset": "daily" },
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
       "priority": 3,
       "enabled": true,
       "deprecated": false
@@ -47,11 +56,14 @@
       "name": "HuggingFace (Flan-T5-XXL)",
       "model": "google/flan-t5-xxl",
       "type": "text",
-      "base_url": "https://api-inference.huggingface.co",
-      "endpoint": "/models/google/flan-t5-xxl",
+      "base_url": "https://api-inference.huggingface.co/",
+      "endpoint": "models/google/flan-t5-xxl",
       "auth_header": "Authorization",
       "secret_key": "HUGGINGFACE_API_KEY",
-      "quota": { "requests_per_minute": 30, "reset": "per_minute" },
+      "quota": {
+        "requests_per_minute": 30,
+        "reset": "per_minute"
+      },
       "priority": 4,
       "enabled": true,
       "deprecated": false
@@ -61,11 +73,13 @@
       "name": "Stability AI (via HuggingFace)",
       "model": "stabilityai/stable-diffusion-2-1",
       "type": "image",
-      "base_url": "https://api-inference.huggingface.co",
-      "endpoint": "/models/stabilityai/stable-diffusion-2-1",
+      "base_url": "https://api-inference.huggingface.co/",
+      "endpoint": "models/stabilityai/stable-diffusion-2-1",
       "auth_header": "Authorization",
       "secret_key": "HUGGINGFACE_API_KEY",
-      "quota": { "unlimited": true },
+      "quota": {
+        "unlimited": true
+      },
       "priority": 1,
       "enabled": true,
       "deprecated": false
@@ -75,11 +89,13 @@
       "name": "Bark TTS",
       "model": "bark",
       "type": "tts",
-      "base_url": "local",
+      "base_url": "local/",
       "endpoint": "local",
       "auth_header": null,
       "secret_key": null,
-      "quota": { "unlimited": true },
+      "quota": {
+        "unlimited": true
+      },
       "priority": 1,
       "enabled": true,
       "deprecated": false
@@ -90,4 +106,3 @@
     "schema_version": "1.0"
   }
 }
-

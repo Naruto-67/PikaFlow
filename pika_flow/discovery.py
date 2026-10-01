@@ -94,7 +94,7 @@ def _refresh_model_ids(providers: list[dict]) -> None:
                         models.sort(reverse=True) # Usually gemini-1.5-flash > gemini-1.0-flash
                         best_model = models[0].replace("models/", "")
                         p["model"] = best_model
-                        p["endpoint"] = f"/v1beta/models/{best_model}:generateContent"
+                        p["endpoint"] = f"v1beta/models/{best_model}:generateContent"
                         print(f"  🔄 Discovered Gemini model: {best_model}")
             except Exception as e:
                 print(f"  ⚠️ Failed to discover Gemini models: {e}")
@@ -153,10 +153,19 @@ def _health_check(provider: dict) -> dict:
     if "model" in payload:
         payload["model"] = provider["model"]
 
+    url = provider["base_url"] + provider["endpoint"]
+    if "generativelanguage" in provider["base_url"] and api_key:
+        sep = "&" if "?" in url else "?"
+        url += f"{sep}key={api_key}"
+        
+    if "openrouter" in provider["base_url"]:
+        headers["HTTP-Referer"] = "https://github.com/Naruto-67/PikaFlow"
+        headers["X-Title"] = "PikaFlow"
+
     try:
         start = time.time()
         resp  = requests.post(
-            provider["base_url"] + provider["endpoint"],
+            url,
             headers=headers,
             json=payload,
             timeout=20,

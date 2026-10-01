@@ -112,7 +112,8 @@ async def run(spec_path: Path) -> None:
         script_prompt = (
             f"You are a creative YouTube scriptwriter specialising in {niche} content.\n"
             f"Write a script for a {fmt}-form video about: {prompt}\n"
-            f"Incorporate these trending keywords naturally: {keywords_hint}\n\n"
+            f"Incorporate these trending keywords naturally: {keywords_hint}\n"
+            f"CRITICAL: Write all numbers as full English words for TTS readability (e.g. 'one hundred twelve' instead of '112').\n\n"
             f"Return a JSON array of scenes. Each scene:\n"
             f'{{"prompt": "Stable Diffusion prompt for the scene visual", '
             f'"description": "Narrator text for this scene", '
@@ -130,7 +131,13 @@ async def run(spec_path: Path) -> None:
 
         # Persist updated spec with scenes
         spec_path.write_text(json.dumps(spec, indent=2))
-        log.info("orchestrator", f"Script ready — {len(scenes)} scenes", {"format": fmt})
+        
+        # Log the script so it appears in the Dev Panel
+        formatted_script = "\n\n".join([
+            f"Scene {i+1}: {s.get('description', '')}"
+            for i, s in enumerate(scenes)
+        ])
+        log.info("orchestrator", f"Script ready — {len(scenes)} scenes\n\n{formatted_script}", {"format": fmt})
 
         # ── Stage 3: SEO Metadata ──────────────────────────────────────────
         log.step("orchestrator", "▶ Stage 3 — SEO Metadata Generation")
