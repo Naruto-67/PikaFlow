@@ -107,6 +107,9 @@ jobs:
           name: run-spec-${{ env.RUN_ID }}
           path: pika_work/${{ env.RUN_ID }}/
 
+      - name: Discover and benchmark live models
+        run: python -m pika_flow.discovery || true
+
       - name: Generate clips
         run: python -m pika_flow.orchestrator pika_work/${{ env.RUN_ID }}/run_spec.json
 

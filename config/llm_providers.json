@@ -2,11 +2,11 @@
   "providers": [
     {
       "id": "gemini",
-      "name": "Google Gemini",
-      "model": "gemini-1.5-flash-001",
+      "name": "Google Gemini 2.5 Flash",
+      "model": "gemini-2.5-flash",
       "type": "text",
       "base_url": "https://generativelanguage.googleapis.com/",
-      "endpoint": "v1beta/models/gemini-1.5-flash-001:generateContent",
+      "endpoint": "v1beta/models/gemini-2.5-flash:generateContent",
       "auth_header": "x-goog-api-key",
       "secret_key": "GEMINI_API_KEY",
       "quota": {
@@ -18,9 +18,26 @@
       "deprecated": false
     },
     {
+      "id": "gemini_2_0",
+      "name": "Google Gemini 2.0 Flash",
+      "model": "gemini-2.0-flash",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-2.0-flash:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 2,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
       "id": "groq",
-      "name": "Groq",
-      "model": "llama-3.1-8b-instant",
+      "name": "Groq (Llama 3.3 70B)",
+      "model": "llama-3.3-70b-versatile",
       "type": "text",
       "base_url": "https://api.groq.com/",
       "endpoint": "openai/v1/chat/completions",
@@ -30,14 +47,14 @@
         "requests_per_minute": 30,
         "reset": "per_minute"
       },
-      "priority": 2,
+      "priority": 3,
       "enabled": true,
       "deprecated": false
     },
     {
-      "id": "openrouter_mistral",
-      "name": "OpenRouter (Llama 3.1 8B)",
-      "model": "meta-llama/llama-3.1-8b-instruct:free",
+      "id": "openrouter_llama",
+      "name": "OpenRouter (Llama 3.3 70B Free)",
+      "model": "meta-llama/llama-3.3-70b-instruct:free",
       "type": "text",
       "base_url": "https://openrouter.ai/",
       "endpoint": "api/v1/chat/completions",
@@ -47,7 +64,24 @@
         "tokens_per_day": 25000,
         "reset": "daily"
       },
-      "priority": 3,
+      "priority": 4,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "openrouter_qwen",
+      "name": "OpenRouter (Qwen 2.5 72B Free)",
+      "model": "qwen/qwen-2.5-72b-instruct:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 5,
       "enabled": true,
       "deprecated": false
     },
