@@ -80,7 +80,7 @@ def is_modality_allowed(model_name: str) -> bool:
     return True
 
 def _refresh_model_ids(providers: list[dict]) -> list[dict]:
-    """Query each provider's /models endpoint to find the latest active/free models, and expand them."""
+    """Query each provider's /models endpoint to discover ALL active/free models without hardcoded limits."""
     expanded_providers = []
     
     for p in providers:
@@ -104,22 +104,16 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
                         m["name"].replace("models/", "") for m in resp.json().get("models", [])
                         if "generateContent" in m.get("supportedGenerationMethods", [])
                     ]
-                    valid_models = [m for m in models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
-                    # Remove pro models since free tier rate limits are too strict for video pipelines
-                    valid_models = [m for m in valid_models if "pro" not in m.lower()]
-                    
+                    valid_models = [m for m in models if is_modality_allowed(m)]
+                    for m in valid_models:
+                        new_p = p.copy()
+                        new_p["id"] = f"gemini_{m.replace('-', '_').replace('.', '_')}"
+                        new_p["name"] = f"Google ({m})"
+                        new_p["model"] = m
+                        new_p["endpoint"] = f"v1beta/models/{m}:generateContent"
+                        expanded_providers.append(new_p)
+                        print(f"  🔄 Discovered Gemini model: {m}")
                     if valid_models:
-                        # Prefer flash over older models, sort descending so 1.5 > 1.0
-                        valid_models.sort(key=lambda x: (1 if "flash" in x else 2, x), reverse=True)
-                        for idx, best_model in enumerate(valid_models[:3]): # Top 3 gemini models
-                            new_p = p.copy()
-                            new_p["id"] = f"gemini_{best_model.replace('-', '_').replace('.', '_')}"
-                            new_p["name"] = f"Google ({best_model})"
-                            new_p["model"] = best_model
-                            new_p["endpoint"] = f"v1beta/models/{best_model}:generateContent"
-                            new_p["priority"] = (idx * 10) + 1  # 1, 11, 21
-                            expanded_providers.append(new_p)
-                            print(f"  🔄 Discovered Gemini model: {best_model}")
                         added = True
             except Exception as e:
                 print(f"  ⚠️ Failed to discover Gemini models: {e}")
@@ -130,18 +124,15 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
                 resp = requests.get(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=10)
                 if resp.status_code == 200:
                     models = [m["id"] for m in resp.json().get("data", []) if m.get("active", True)]
-                    valid_models = [m for m in models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
+                    valid_models = [m for m in models if is_modality_allowed(m)]
+                    for m in valid_models:
+                        new_p = p.copy()
+                        new_p["id"] = f"groq_{m.replace('-', '_').replace('.', '_')}"
+                        new_p["name"] = f"Groq ({m})"
+                        new_p["model"] = m
+                        expanded_providers.append(new_p)
+                        print(f"  🔄 Discovered Groq model: {m}")
                     if valid_models:
-                        # Prefer 8b over 70b since 70b has strict free rate limits on Groq
-                        valid_models.sort(key=lambda x: (1 if "8b" in x.lower() else 2 if "3.3" in x.lower() else 3, x))
-                        for idx, best_model in enumerate(valid_models[:3]):
-                            new_p = p.copy()
-                            new_p["id"] = f"groq_{best_model.replace('-', '_').replace('.', '_')}"
-                            new_p["name"] = f"Groq ({best_model})"
-                            new_p["model"] = best_model
-                            new_p["priority"] = (idx * 10) + 2  # 2, 12, 22
-                            expanded_providers.append(new_p)
-                            print(f"  🔄 Discovered Groq model: {best_model}")
                         added = True
             except Exception as e:
                 print(f"  ⚠️ Failed to discover Groq models: {e}")
@@ -155,30 +146,25 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
                         m["id"] for m in resp.json().get("data", [])
                         if m.get("pricing", {}).get("prompt") == "0" and m.get("pricing", {}).get("completion") == "0"
                     ]
-                    valid_models = [m for m in free_models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
+                    valid_models = [m for m in free_models if is_modality_allowed(m)]
+                    for m in valid_models:
+                        new_p = p.copy()
+                        new_p["id"] = f"or_{m.split('/')[-1].replace('-', '_').replace('.', '_').replace(':', '_')}"
+                        new_p["name"] = f"OpenRouter ({m.split('/')[-1]})"
+                        new_p["model"] = m
+                        expanded_providers.append(new_p)
+                        print(f"  🔄 Discovered OpenRouter model: {m}")
                     if valid_models:
-                        # Prefer 8b models, then llama, then mistral
-                        valid_models.sort(key=lambda x: (1 if "8b" in x.lower() else 2 if "llama" in x.lower() else 3, x))
-                        for idx, best_model in enumerate(valid_models[:3]):
-                            new_p = p.copy()
-                            new_p["id"] = f"or_{best_model.split('/')[-1].replace('-', '_').replace('.', '_').replace(':', '_')}"
-                            new_p["name"] = f"OpenRouter ({best_model.split('/')[-1]})"
-                            new_p["model"] = best_model
-                            new_p["priority"] = (idx * 10) + 3  # 3, 13, 23
-                            expanded_providers.append(new_p)
-                            print(f"  🔄 Discovered OpenRouter model: {best_model}")
                         added = True
             except Exception as e:
                 print(f"  ⚠️ Failed to discover OpenRouter models: {e}")
         
         elif "huggingface" in p["id"]:
-            # Keeping the default HF model as is
-            p["priority"] = 40
             expanded_providers.append(p)
             added = True
             
         if not added and p.get("type") == "text":
-            expanded_providers.append(p) # fallback if discovery failed
+            expanded_providers.append(p)
             
     return expanded_providers
 
@@ -189,7 +175,6 @@ def _health_check(provider: dict) -> dict:
     Returns: {"ok": bool, "latency_ms": int, "status_code": int, "error": str|None}
     """
     if provider.get("base_url") == "local":
-        # Local models (Bark, etc.) are always considered healthy
         return {"ok": True, "latency_ms": 0, "status_code": 200, "error": None}
 
     api_key     = _get_api_key(provider.get("secret_key"))
@@ -229,68 +214,95 @@ def _health_check(provider: dict) -> dict:
             url,
             headers=headers,
             json=payload,
-            timeout=20,
+            timeout=15,
         )
         latency = int((time.time() - start) * 1000)
 
         if resp.status_code == 200:
             return {"ok": True,  "latency_ms": latency, "status_code": 200, "error": None}
         elif resp.status_code == 404:
-            # 404 usually means the model is deprecated / moved
-            return {"ok": False, "latency_ms": latency, "status_code": 404, "error": "Model not found — possibly deprecated"}
+            return {"ok": False, "latency_ms": latency, "status_code": 404, "error": "Model not found / deprecated"}
         elif resp.status_code == 429:
-            # 429 = quota, but model is alive
             return {"ok": True,  "latency_ms": latency, "status_code": 429, "error": "Quota limit (model is live)"}
         else:
             return {"ok": False, "latency_ms": latency, "status_code": resp.status_code, "error": resp.text[:200]}
 
     except requests.Timeout:
-        return {"ok": False, "latency_ms": 20000, "status_code": 0, "error": "Timeout"}
+        return {"ok": False, "latency_ms": 15000, "status_code": 0, "error": "Timeout"}
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "latency_ms": 0, "status_code": 0, "error": str(exc)}
 
 
 def run() -> None:
-    print("🔍 PikaFlow Nightly Discovery")
-    print(f"   Time: {datetime.now(timezone.utc).isoformat()}")
-    print()
+    print("🔍 PikaFlow Automated Free Model Discovery & Benchmark")
+    print(f"   Time: {datetime.now(timezone.utc).isoformat()}\n")
 
-    providers   = _load_providers()
-    performance = _load_performance()
+    base_providers = _load_providers()
+    performance    = _load_performance()
 
-    providers = _refresh_model_ids(providers)
+    # Discover ALL free text models across provider catalogs
+    providers = _refresh_model_ids(base_providers)
     
+    # Test and benchmark EVERY discovered model
+    tested_results = []
     for p in providers:
         if p.get("base_url") == "local":
-            print(f"  ⚪ {p['name']:30s} — local model, skipping HTTP check")
+            print(f"  ⚪ {p['name']:35s} — local model, skipping HTTP check")
+            tested_results.append((p, {"ok": True, "latency_ms": 0, "status_code": 200, "error": None}))
             continue
 
         result = _health_check(p)
         status = "✅" if result["ok"] else "❌"
-        print(f"  {status} {p['name']:30s} | {result['status_code']} | {result['latency_ms']} ms | {result['error'] or 'OK'}")
+        print(f"  {status} {p['name']:35s} | {result['status_code']:3d} | {result['latency_ms']:5d} ms | {result['error'] or 'OK'}")
+        tested_results.append((p, result))
 
-        # Update performance record
+        # Update performance metrics
         perf = performance.setdefault("providers", {}).setdefault(p["id"], {})
         perf["avg_latency_ms"] = result["latency_ms"]
 
-        # Smoothed success rate (EMA, alpha=0.3)
         prev_rate = perf.get("success_rate") or (1.0 if result["ok"] else 0.0)
         perf["success_rate"] = round(0.7 * prev_rate + 0.3 * (1.0 if result["ok"] else 0.0), 3)
 
-        # Mark deprecated on 404
-        if result["status_code"] == 404:
+        # Automatically deprecate on 404 or decommissioned error
+        err_msg = str(result.get("error") or "").lower()
+        if result["status_code"] in (400, 404) and ("decommissioned" in err_msg or "not found" in err_msg or result["status_code"] == 404):
             p["deprecated"] = True
-            print(f"    ⚠️  Marked as deprecated: {p['name']}")
+            p["enabled"] = False
+            print(f"    ⚠️  Marked as deprecated/decommissioned: {p['name']}")
 
-        # Disable provider if consistently failing (success_rate < 0.2)
         if perf["success_rate"] < 0.2:
             p["enabled"] = False
             print(f"    ⛔ Disabled (low success rate): {p['name']}")
 
-    _save_providers(providers)
+    # ── EMPIRICAL BENCHMARK RANKING ──
+    # Sort all text models purely by empirical speed & health
+    def perf_rank(item):
+        prov, res = item
+        if not prov.get("enabled", True) or prov.get("deprecated", False):
+            return 999999
+        p_perf = performance.get("providers", {}).get(prov["id"], {})
+        s_rate = p_perf.get("success_rate", 1.0 if res["ok"] else 0.0)
+        lat = res["latency_ms"] if res["latency_ms"] > 0 else 9999
+        return int((1.0 - s_rate) * 1000 + lat)
+
+    text_items = [(p, r) for p, r in tested_results if p.get("type") == "text"]
+    other_items = [(p, r) for p, r in tested_results if p.get("type") != "text"]
+
+    text_items.sort(key=perf_rank)
+
+    # Assign priority 1..N dynamically based on empirical ranking
+    final_providers = []
+    for rank, (prov, _) in enumerate(text_items, start=1):
+        prov["priority"] = rank
+        final_providers.append(prov)
+
+    for prov, _ in other_items:
+        final_providers.append(prov)
+
+    _save_providers(final_providers)
     _save_performance(performance)
 
-    print("\n✅ Discovery complete — configs updated.")
+    print(f"\n✅ Discovery & Benchmark complete — ranked {len(text_items)} text models empirically.")
 
 
 if __name__ == "__main__":
