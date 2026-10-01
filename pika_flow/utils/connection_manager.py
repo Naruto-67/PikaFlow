@@ -103,3 +103,4 @@ class ConnectionManager:
             await client.aclose()
         self._clients.clear()
         logger.debug("[ConnectionManager] All connections closed.")
+

@@ -118,3 +118,4 @@ Every run creates a GitHub Release tagged `run-ddmmyyyy-hhmm`
 ## License
 
 MIT — see [LICENSE](LICENSE).
+

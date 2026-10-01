@@ -5,3 +5,4 @@
   "alerts": { "browser_notifications": true, "discord": true },
   "panel_token_ttl_min": 15
 }
+

@@ -199,3 +199,4 @@ class VideoEditor:
         if result.returncode != 0:
             self.log.error("video_editor", f"{label} failed:\n{result.stderr[-500:]}")
             raise RuntimeError(f"FFmpeg {label} failed (exit {result.returncode})")
+

@@ -123,3 +123,4 @@ class PikaLogger:
             f"**Errors:** {errors} &nbsp; **Warnings:** {warns}",
         ]
         self._summary_path.write_text("\n".join(lines), encoding="utf-8")
+

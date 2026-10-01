@@ -43,3 +43,4 @@ jobs:
           git add config/llm_providers.json config/llm_performance.json
           git diff --cached --quiet || git commit -m "chore: nightly provider discovery $(date +'%d-%m-%Y')"
           git push
+

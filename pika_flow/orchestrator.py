@@ -94,3 +94,4 @@ async def run(spec_path: Path) -> None:
 if __name__ == "__main__":
     spec = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("run_spec.json")
     asyncio.run(run(spec))
+
