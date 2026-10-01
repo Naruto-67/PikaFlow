@@ -63,3 +63,4 @@ if __name__ == "__main__":
     cfg = Path(__file__).parent.parent.parent / "config"
     if not run_validation(cfg):
         sys.exit(1)
+

@@ -105,9 +105,12 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
                         if "generateContent" in m.get("supportedGenerationMethods", [])
                     ]
                     valid_models = [m for m in models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
+                    # Remove pro models since free tier rate limits are too strict for video pipelines
+                    valid_models = [m for m in valid_models if "pro" not in m.lower()]
+                    
                     if valid_models:
-                        # Prefer flash/pro over older models
-                        valid_models.sort(key=lambda x: (1 if "pro" in x else 2 if "flash" in x else 3, x), reverse=False)
+                        # Prefer flash over older models, sort descending so 1.5 > 1.0
+                        valid_models.sort(key=lambda x: (1 if "flash" in x else 2, x), reverse=True)
                         for idx, best_model in enumerate(valid_models[:3]): # Top 3 gemini models
                             new_p = p.copy()
                             new_p["id"] = f"gemini_{best_model.replace('-', '_').replace('.', '_')}"
@@ -129,8 +132,8 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
                     models = [m["id"] for m in resp.json().get("data", []) if m.get("active", True)]
                     valid_models = [m for m in models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
                     if valid_models:
-                        # Prefer llama-3.3, then llama-3.1, then mixtral
-                        valid_models.sort(key=lambda x: (1 if "llama-3.3" in x.lower() else 2 if "llama-3.1" in x.lower() else 3, x))
+                        # Prefer 8b over 70b since 70b has strict free rate limits on Groq
+                        valid_models.sort(key=lambda x: (1 if "8b" in x.lower() else 2 if "3.3" in x.lower() else 3, x))
                         for idx, best_model in enumerate(valid_models[:3]):
                             new_p = p.copy()
                             new_p["id"] = f"groq_{best_model.replace('-', '_').replace('.', '_')}"
@@ -154,8 +157,8 @@ def _refresh_model_ids(providers: list[dict]) -> list[dict]:
                     ]
                     valid_models = [m for m in free_models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
                     if valid_models:
-                        # Prefer llama and mistral
-                        valid_models.sort(key=lambda x: (1 if "llama" in x.lower() else 2 if "mistral" in x.lower() else 3, x))
+                        # Prefer 8b models, then llama, then mistral
+                        valid_models.sort(key=lambda x: (1 if "8b" in x.lower() else 2 if "llama" in x.lower() else 3, x))
                         for idx, best_model in enumerate(valid_models[:3]):
                             new_p = p.copy()
                             new_p["id"] = f"or_{best_model.split('/')[-1].replace('-', '_').replace('.', '_').replace(':', '_')}"
