@@ -63,55 +63,79 @@ class ThumbnailGenerator:
     async def _generate_image(
         self, prompt: str, hf_api_key: str | None
     ) -> Image.Image:
-        """Try HuggingFace remote first, fallback to local generation."""
+        """Try HuggingFace remote first, then Pollinations, then local generation."""
         if hf_api_key:
             try:
                 return self._hf_inference(prompt, hf_api_key)
             except Exception as exc:  # noqa: BLE001
-                self.log.warn("thumbnail_generator", f"HF inference failed: {exc}, using local fallback")
+                self.log.warn("thumbnail_generator", f"HF inference failed: {exc}, trying Pollinations")
+
+        try:
+            return self._pollinations_inference(prompt)
+        except Exception as exc:  # noqa: BLE001
+            self.log.warn("thumbnail_generator", f"Pollinations failed: {exc}, using local fallback")
 
         return self._local_fallback(prompt)
 
     def _hf_inference(self, prompt: str, api_key: str) -> Image.Image:
         """Call HuggingFace Inference API for image generation."""
-        api_url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-2-1"
+        api_url = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
+        backup_url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-2-1"
         headers = {"Authorization": f"Bearer {api_key}"}
         payload = {
             "inputs": prompt,
             "parameters": {
                 "width": 1280,
                 "height": 720,
-                "num_inference_steps": 20,
             },
         }
-        resp = requests.post(api_url, headers=headers, json=payload, timeout=60)
+        for url in [api_url, backup_url]:
+            try:
+                resp = requests.post(url, headers=headers, json=payload, timeout=30)
+                if resp.status_code == 200:
+                    return Image.open(io.BytesIO(resp.content))
+            except Exception:
+                pass
+        raise RuntimeError("All HuggingFace image endpoints failed")
+
+    def _pollinations_inference(self, prompt: str) -> Image.Image:
+        """Pollinations AI free tier FLUX image generation."""
+        import urllib.parse
+        encoded = urllib.parse.quote(prompt[:300])
+        seed = abs(hash(prompt)) % 1000000
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width=1280&height=720&model=flux&nologo=true&seed={seed}"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        resp = requests.get(url, headers=headers, timeout=25)
         resp.raise_for_status()
-        return Image.open(io.BytesIO(resp.content))
+        self.log.info("thumbnail_generator", "Generated thumbnail art via Pollinations Flux")
+        return Image.open(io.BytesIO(resp.content)).convert("RGB")
 
     def _local_fallback(self, prompt: str) -> Image.Image:
         """
-        Local CPU-only generation via diffusers.
-        Slower but works without internet or API keys.
+        Local GPU-only generation via diffusers (CUDA only).
+        On CPU, immediately uses placeholder to prevent runner hangs.
         """
         try:
-            from diffusers import StableDiffusionPipeline  # type: ignore
             import torch
+            if torch.cuda.is_available():
+                from diffusers import StableDiffusionPipeline  # type: ignore
 
-            self.log.info("thumbnail_generator", "Running local SD pipeline (CPU)")
-            pipe = StableDiffusionPipeline.from_pretrained(
-                "runwayml/stable-diffusion-v1-5",
-                torch_dtype=torch.float32,
-            )
-            pipe.to("cpu")
-            result = pipe(
-                prompt,
-                width=640, height=360,  # lower res for CPU speed
-                num_inference_steps=15,
-            )
-            return result.images[0]
+                self.log.info("thumbnail_generator", "Running local SD pipeline (GPU)")
+                pipe = StableDiffusionPipeline.from_pretrained(
+                    "runwayml/stable-diffusion-v1-5",
+                    torch_dtype=torch.float16,
+                )
+                pipe.to("cuda")
+                result = pipe(
+                    prompt,
+                    width=1280, height=720,
+                    num_inference_steps=15,
+                )
+                return result.images[0]
         except Exception as exc:  # noqa: BLE001
-            self.log.warn("thumbnail_generator", f"Local SD failed: {exc} — using placeholder")
-            return self._placeholder(prompt)
+            self.log.warn("thumbnail_generator", f"Local GPU SD failed: {exc} — using placeholder")
+
+        return self._placeholder(prompt)
 
     @staticmethod
     def _placeholder(prompt: str) -> Image.Image:

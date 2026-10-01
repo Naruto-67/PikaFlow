@@ -98,6 +98,7 @@ async def generate_clips(
             fps=fps,
             width=width,
             height=height,
+            motion_index=scene_idx,
         )
 
         # Rename to ordered filename for reliable concat
