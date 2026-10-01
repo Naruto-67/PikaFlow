@@ -19,12 +19,45 @@ Output files:
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
 
 from pika_flow.logger import PikaLogger
 
+try:
+    import inflect
+    _p = inflect.engine()
+except ImportError:
+    _p = None
+
+def _normalize_tts_text(text: str) -> str:
+    """Convert numbers/symbols to spoken words for better TTS."""
+    if not text:
+        return ""
+    
+    # Symbols
+    text = text.replace("$", " dollars ")
+    text = text.replace("%", " percent ")
+    text = text.replace("&", " and ")
+
+    if _p:
+        # Convert standalone numbers to words (e.g., 112 -> one hundred and twelve)
+        def replace_num(match):
+            num_str = match.group(0)
+            try:
+                # remove commas to parse cleanly
+                val = num_str.replace(',', '')
+                words = _p.number_to_words(val)
+                return f" {words} "
+            except Exception:
+                return num_str
+        
+        # Matches numbers like 10, 1000, 1,000, etc.
+        text = re.sub(r'\b\d+(?:,\d{3})*\b', replace_num, text)
+
+    return " ".join(text.split())
 
 class AudioGenerator:
     def __init__(self, logger: PikaLogger, work_dir: Path) -> None:
@@ -40,6 +73,8 @@ class AudioGenerator:
         """
         self.log.step("audio_generator", "Generating narration")
         out = self.work_dir / "narration.wav"
+
+        script = _normalize_tts_text(script)
 
         success = self._bark_tts(script, out)
         if not success:

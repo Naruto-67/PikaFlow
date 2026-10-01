@@ -228,13 +228,16 @@ async def run(spec_path: Path) -> None:
         # ── Stage 9: YouTube Upload (optional) ────────────────────────────
         yt_client_id = os.environ.get("YOUTUBE_CLIENT_ID", "")
         if yt_client_id and final_video.exists():
-            log.step("orchestrator", "▶ Stage 9 — YouTube Upload")
-            try:
-                from pika_flow.youtube_uploader import upload_video
-                vid_id = upload_video(final_video, metadata, thumbnail, log)
-                log.info("orchestrator", f"YouTube video → https://youtu.be/{vid_id}")
-            except Exception as exc:  # noqa: BLE001
-                log.warn("orchestrator", f"YouTube upload failed (non-fatal): {exc}")
+            if spec.get("upload_to_youtube", False):
+                log.step("orchestrator", "▶ Stage 9 — YouTube Upload")
+                try:
+                    from pika_flow.youtube_uploader import upload_video
+                    vid_id = upload_video(final_video, metadata, thumbnail, log)
+                    log.info("orchestrator", f"YouTube video → https://youtu.be/{vid_id}")
+                except Exception as exc:  # noqa: BLE001
+                    log.warn("orchestrator", f"YouTube upload failed (non-fatal): {exc}")
+            else:
+                log.info("orchestrator", "YouTube upload skipped (disabled in Dev Panel)")
         else:
             log.info("orchestrator", "YouTube upload skipped (YOUTUBE_CLIENT_ID not set)")
 

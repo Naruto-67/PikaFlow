@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { REPO_OWNER, REPO_NAME } from '../config'
+import ScriptModal from './ScriptModal'
 
 function statusBadge(tag) {
   return <span className="badge-green">✅ Complete</span>
@@ -14,6 +15,7 @@ function formatDate(iso) {
 
 export default function RunHistory({ releases, loading, error, onRefresh }) {
   const [expanded, setExpanded] = useState(null)
+  const [viewScriptUrl, setViewScriptUrl] = useState(null)
 
   if (loading) return (
     <div className="card animate-pulse-slow text-center text-gray-500 py-10">
@@ -47,6 +49,7 @@ export default function RunHistory({ releases, loading, error, onRefresh }) {
             const videoAsset = r.assets?.find(a => a.name.endsWith('.mp4'))
             const logAsset   = r.assets?.find(a => a.name === 'log.jsonl')
             const seoAsset   = r.assets?.find(a => a.name === 'seo_metadata.json')
+            const specAsset  = r.assets?.find(a => a.name === 'run_spec.json')
 
             return (
               <li key={r.id} className="bg-pika-700 rounded-xl overflow-hidden">
@@ -84,6 +87,14 @@ export default function RunHistory({ releases, loading, error, onRefresh }) {
                           ⬇️ Download Video
                         </a>
                       )}
+                      {specAsset && (
+                        <button
+                          onClick={() => setViewScriptUrl({url: specAsset.browser_download_url, id: r.tag_name})}
+                          className="btn-ghost text-sm flex items-center gap-1"
+                        >
+                          📝 View Script
+                        </button>
+                      )}
                       {seoAsset && (
                         <a
                           href={seoAsset.browser_download_url}
@@ -116,6 +127,14 @@ export default function RunHistory({ releases, loading, error, onRefresh }) {
             )
           })}
         </ul>
+      )}
+      
+      {viewScriptUrl && (
+        <ScriptModal 
+          runId={viewScriptUrl.id}
+          scriptUrl={viewScriptUrl.url} 
+          onClose={() => setViewScriptUrl(null)} 
+        />
       )}
     </div>
   )

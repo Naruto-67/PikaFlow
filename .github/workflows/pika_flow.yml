@@ -57,6 +57,7 @@ jobs:
             "resolution": "${{ github.event.client_payload.resolution || '' }}",
             "style_keywords": "${{ github.event.client_payload.style_keywords || '' }}",
             "use_music": ${{ github.event.client_payload.use_music != false }},
+            "upload_to_youtube": ${{ github.event.client_payload.upload_to_youtube == true }},
             "scenes": []
           }' > "pika_work/${RUN_ID}/run_spec.json"
 

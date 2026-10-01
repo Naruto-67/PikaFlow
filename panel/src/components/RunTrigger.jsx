@@ -14,6 +14,7 @@ export default function RunTrigger({ token }) {
   const [resolution, setResolution] = useState('1920x1080')
   const [styleKeywords, setStyleKeywords] = useState('')
   const [useMusic, setUseMusic] = useState(true)
+  const [uploadYouTube, setUploadYouTube] = useState(false)
 
   const [status,  setStatus]  = useState('idle')   // idle | loading | success | error
   const [message, setMessage] = useState('')
@@ -39,7 +40,8 @@ export default function RunTrigger({ token }) {
             format,
             resolution,
             style_keywords: styleKeywords.trim(),
-            use_music: useMusic
+            use_music: useMusic,
+            upload_to_youtube: uploadYouTube
           },
         }),
       })
@@ -130,6 +132,19 @@ export default function RunTrigger({ token }) {
           />
           <label htmlFor="useMusic" className="text-sm text-gray-300 select-none">
             Add background music (Freesound)
+          </label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input 
+            type="checkbox" 
+            id="uploadYouTube"
+            checked={uploadYouTube}
+            onChange={e => setUploadYouTube(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-600 bg-pika-700 text-pika-red focus:ring-pika-red focus:ring-offset-pika-800"
+          />
+          <label htmlFor="uploadYouTube" className="text-sm text-gray-300 select-none">
+            Upload to YouTube (if credentials are set)
           </label>
         </div>
 
