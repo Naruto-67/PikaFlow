@@ -50,3 +50,4 @@ export default function ScriptModal({ runId, scriptUrl, onClose }) {
     </div>
   )
 }
+

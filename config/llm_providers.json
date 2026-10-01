@@ -3,10 +3,10 @@
     {
       "id": "gemini",
       "name": "Google Gemini",
-      "model": "gemini-2.0-flash",
+      "model": "gemini-1.5-flash",
       "type": "text",
       "base_url": "https://generativelanguage.googleapis.com",
-      "endpoint": "/v1beta/models/gemini-2.0-flash:generateContent",
+      "endpoint": "/v1beta/models/gemini-1.5-flash:generateContent",
       "auth_header": "x-goog-api-key",
       "secret_key": "GEMINI_API_KEY",
       "quota": { "requests_per_day": 1500, "reset": "daily" },

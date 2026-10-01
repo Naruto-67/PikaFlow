@@ -155,6 +155,21 @@ class LLMManager:
             # Local model — handled by the caller (e.g. bark, local diffusion)
             return {"local": True, "provider": provider["id"]}
 
+        # ── Format Translation ──
+        # All callers currently pass the Gemini payload: {"contents": [{"parts": [{"text": "..."}]}]}
+        is_openai = "openai" in provider["endpoint"] or "openrouter" in provider["base_url"]
+        is_hf = "huggingface" in provider["base_url"]
+
+        if "contents" in payload:
+            text = payload["contents"][0]["parts"][0]["text"]
+            if is_openai:
+                payload = {
+                    "model": provider["model"],
+                    "messages": [{"role": "user", "content": text}]
+                }
+            elif is_hf:
+                payload = {"inputs": text}
+
         resp = await self._conn.request(
             base_url=provider["base_url"],
             endpoint=provider["endpoint"],
@@ -162,7 +177,18 @@ class LLMManager:
             json=payload,
             headers=headers,
         )
-        return resp.json()
+        data = resp.json()
+
+        # ── Response Translation ──
+        # Translating back to Gemini format so orchestrator/seo_generator parsing doesn't break
+        if is_openai and "choices" in data:
+            content = data["choices"][0]["message"].get("content", "")
+            data = {"candidates": [{"content": {"parts": [{"text": content}]}}]}
+        elif is_hf and isinstance(data, list) and len(data) > 0 and "generated_text" in data[0]:
+            content = data[0]["generated_text"]
+            data = {"candidates": [{"content": {"parts": [{"text": content}]}}]}
+
+        return data
 
     def _record_success(self, provider_id: str) -> None:
         """Bump success metrics — simplified; full benchmarking tracked over runs."""
