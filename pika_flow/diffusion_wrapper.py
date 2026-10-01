@@ -190,3 +190,4 @@ class DiffusionWrapper:
 def _slug(text: str, max_len: int = 20) -> str:
     import re
     return re.sub(r"[^a-z0-9]", "_", text.lower())[:max_len]
+

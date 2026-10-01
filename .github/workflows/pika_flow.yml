@@ -75,6 +75,10 @@ jobs:
       GROQ_API_KEY:         ${{ secrets.GROQ_API_KEY }}
       OPENROUTER_API_KEY:   ${{ secrets.OPENROUTER_API_KEY }}
       HUGGINGFACE_API_KEY:  ${{ secrets.HUGGINGFACE_API_KEY }}
+      FREESOUND_API_KEY:    ${{ secrets.FREESOUND_API_KEY }}
+      YOUTUBE_CLIENT_ID:    ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
       RUN_ID:               ${{ needs.init.outputs.run_id }}
 
     steps:

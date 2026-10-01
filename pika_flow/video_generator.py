@@ -119,3 +119,4 @@ if __name__ == "__main__":
         )
     )
     log.info("video_generator", f"Done — {len(clips)} clips generated")
+
