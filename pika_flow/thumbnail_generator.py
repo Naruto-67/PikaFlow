@@ -111,30 +111,7 @@ class ThumbnailGenerator:
         return Image.open(io.BytesIO(resp.content)).convert("RGB")
 
     def _local_fallback(self, prompt: str) -> Image.Image:
-        """
-        Local GPU-only generation via diffusers (CUDA only).
-        On CPU, immediately uses placeholder to prevent runner hangs.
-        """
-        try:
-            import torch
-            if torch.cuda.is_available():
-                from diffusers import StableDiffusionPipeline  # type: ignore
-
-                self.log.info("thumbnail_generator", "Running local SD pipeline (GPU)")
-                pipe = StableDiffusionPipeline.from_pretrained(
-                    "runwayml/stable-diffusion-v1-5",
-                    torch_dtype=torch.float16,
-                )
-                pipe.to("cuda")
-                result = pipe(
-                    prompt,
-                    width=1280, height=720,
-                    num_inference_steps=15,
-                )
-                return result.images[0]
-        except Exception as exc:  # noqa: BLE001
-            self.log.warn("thumbnail_generator", f"Local GPU SD failed: {exc} — using placeholder")
-
+        """Fallback to styled placeholder without downloading local diffusion models."""
         return self._placeholder(prompt)
 
     @staticmethod

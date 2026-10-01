@@ -1,27 +1,32 @@
 """
 Diffusion Wrapper
 =================
-Unified interface for image and video generation.
+Unified interface for cloud-based video and visual generation.
 
-Multi-tier execution strategy:
-  1. Remote Text-to-Video: HuggingFace Inference Router (if available)
-  2. Local GPU Video: AnimateDiff (CUDA only — strictly skipped on CPU to prevent runner hangs)
-  3. High-Res Remote Image + Cinematic Ken Burns Motion Engine:
-     - Tier A: HuggingFace Serverless Inference (FLUX / SD-2-1)
-     - Tier B: Pollinations AI (Zero-auth, free tier, instant FLUX/SDXL, 1280x720)
-     - Dynamic Camera Motions: Zoom-in, Pan-right, Zoom-out, Pan-left, Tilt-up
-  4. Local Fallback: Stylised dark anime motion card (last resort, never crashes)
+Architecture (Zero Local Model Loading):
+  1. Priority 1 — Cloudflare Worker / Remote Video API:
+     Configured via CLOUDFLARE_VIDEO_API_URL or VIDEO_GEN_API_URL.
+     Ready for custom Cloudflare Worker deployment.
+  2. Priority 2 — Cloud Free GPU Video (Hugging Face ZeroGPU Spaces):
+     Calls remote A100 GPU spaces (via gradio_client) for genuine generative AI video.
+  3. Priority 3 — Hugging Face Serverless Router video endpoint.
+  4. Fallback (Safe, Fast, 100% Reliable) — High-Res Visual + Ken Burns Motion Engine:
+     Generates crisp 1280x720 visuals (HuggingFace FLUX / Pollinations AI FLUX)
+     and renders smooth 24 fps cinematic camera movements in <0.1s.
+  5. Last Resort:
+     Stylised dark anime aesthetic card with scene text.
 
-All clips are encoded to MP4 via FFmpeg.
+NO LOCAL RUN: Zero local diffusers or CPU model downloads.
 """
 
 from __future__ import annotations
 
 import io
 import os
+import subprocess
+import tempfile
 import urllib.parse
 from pathlib import Path
-from typing import Literal
 
 import requests
 from PIL import Image, ImageDraw
@@ -49,7 +54,7 @@ class DiffusionWrapper:
         img = (
             self._hf_image(prompt, width, height)
             or self._pollinations_image(prompt, width, height)
-            or self._local_image(prompt, width, height)
+            or self._placeholder_image(prompt, width, height)
         )
         out = self.work_dir / f"img_{_slug(prompt)}.png"
         img.save(out, "PNG")
@@ -67,51 +72,176 @@ class DiffusionWrapper:
     ) -> Path:
         """
         Generate a video clip from a text prompt.
-        If direct text-to-video is unavailable (standard on free tier / CPU runners),
-        generates a high-res scene visual and applies smooth cinematic Ken Burns motion.
+
+        Order:
+          1. Cloudflare Worker / Remote Video API (if configured)
+          2. Hugging Face Cloud Free GPU Space (ZeroGPU via gradio_client)
+          3. Hugging Face Serverless Router video endpoint
+          4. Fallback: High-Res Visual (HF / Pollinations FLUX) + Ken Burns Motion Engine
         """
         self.log.step("diffusion", f"Clip: {prompt[:60]}…")
 
-        # 1. Try remote text-to-video
+        # ── 1. Cloudflare Worker / Remote Video API ────────────────────────
+        cf_clip = self._cloudflare_worker_video(prompt, duration_s, width, height)
+        if cf_clip and cf_clip.exists():
+            return cf_clip
+
+        # ── 2. Cloud Free GPU Space (Hugging Face ZeroGPU) ──────────────────
+        space_clip = self._hf_space_video(prompt, duration_s, fps, width, height)
+        if space_clip and space_clip.exists():
+            return space_clip
+
+        # ── 3. Hugging Face Serverless Router ──────────────────────────────
         frames = self._hf_video_frames(prompt, duration_s, fps)
+        if frames:
+            out = self.work_dir / f"clip_{_slug(prompt)}.mp4"
+            self._frames_to_mp4(frames, out, fps, width, height)
+            self.log.info("diffusion", f"Clip saved → {out.name}")
+            return out
 
-        # 2. Try local GPU video (CUDA ONLY)
-        if not frames:
-            frames = self._local_video_frames(prompt, duration_s, fps)
+        # ── 4. Fallback: Image + Ken Burns Motion Engine ───────────────────
+        motions = ["zoom_in", "pan_right", "zoom_out", "pan_left", "tilt_up"]
+        chosen_motion = motions[motion_index % len(motions)]
+        self.log.info("diffusion", f"Rendering Ken Burns {chosen_motion} motion visual ({width}x{height} @ {fps}fps)")
 
-        # 3. Cinematic Ken Burns motion engine on high-res scene visual
-        if not frames:
-            motions = ["zoom_in", "pan_right", "zoom_out", "pan_left", "tilt_up"]
-            chosen_motion = motions[motion_index % len(motions)]
-            self.log.info("diffusion", f"Rendering cinematic {chosen_motion} motion clip ({width}x{height} @ {fps}fps)")
-
-            img = (
-                self._hf_image(prompt, width, height)
-                or self._pollinations_image(prompt, width, height)
-                or self._local_image(prompt, width, height)
-            )
-            frames = self._image_to_ken_burns_frames(
-                img=img,
-                duration_s=duration_s,
-                fps=fps,
-                width=width,
-                height=height,
-                motion=chosen_motion,
-            )
-
-        # Fallback to placeholder if everything failed
-        if not frames:
-            frames = self._placeholder_frames(duration_s, fps, width, height)
+        img = (
+            self._hf_image(prompt, width, height)
+            or self._pollinations_image(prompt, width, height)
+            or self._placeholder_image(prompt, width, height)
+        )
+        frames = self._image_to_ken_burns_frames(
+            img=img,
+            duration_s=duration_s,
+            fps=fps,
+            width=width,
+            height=height,
+            motion=chosen_motion,
+        )
 
         out = self.work_dir / f"clip_{_slug(prompt)}.mp4"
         self._frames_to_mp4(frames, out, fps, width, height)
         self.log.info("diffusion", f"Clip saved → {out.name}")
         return out
 
-    # ── Remote Image Generation ───────────────────────────────────────────
+    # ── Priority 1: Cloudflare Worker / Remote Video API ──────────────────
+
+    def _cloudflare_worker_video(
+        self, prompt: str, duration_s: int, width: int, height: int
+    ) -> Path | None:
+        """
+        Pluggable hook for custom Cloudflare Worker or remote video API.
+        Reads CLOUDFLARE_VIDEO_API_URL or VIDEO_GEN_API_URL env vars.
+        """
+        api_url = os.environ.get("CLOUDFLARE_VIDEO_API_URL") or os.environ.get("VIDEO_GEN_API_URL")
+        if not api_url:
+            return None
+
+        self.log.step("diffusion", f"Calling Cloudflare Worker video API: {api_url[:50]}…")
+        try:
+            headers = {"Content-Type": "application/json"}
+            api_key = os.environ.get("CLOUDFLARE_API_KEY") or os.environ.get("VIDEO_API_KEY")
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+
+            payload = {
+                "prompt": prompt,
+                "duration_s": duration_s,
+                "width": width,
+                "height": height,
+            }
+            resp = requests.post(api_url, headers=headers, json=payload, timeout=90)
+            resp.raise_for_status()
+
+            out_path = self.work_dir / f"clip_{_slug(prompt)}.mp4"
+            content_type = resp.headers.get("content-type", "")
+
+            # If worker returned binary MP4
+            if "video" in content_type or "octet-stream" in content_type:
+                out_path.write_bytes(resp.content)
+                self.log.info("diffusion", f"✅ Video generated via Cloudflare Worker: {out_path.name}")
+                return out_path
+
+            # If worker returned JSON with video URL
+            data = resp.json()
+            video_url = data.get("video_url") or data.get("url")
+            if video_url:
+                v_resp = requests.get(video_url, timeout=60)
+                v_resp.raise_for_status()
+                out_path.write_bytes(v_resp.content)
+                self.log.info("diffusion", f"✅ Video downloaded from Cloudflare Worker URL: {out_path.name}")
+                return out_path
+
+        except Exception as exc:  # noqa: BLE001
+            self.log.warn("diffusion", f"Cloudflare Worker video API failed: {exc} — trying next tier")
+            return None
+
+        return None
+
+    # ── Priority 2: Hugging Face Cloud Free GPU Space (ZeroGPU) ───────────
+
+    def _hf_space_video(
+        self, prompt: str, duration_s: int, fps: int, width: int, height: int
+    ) -> Path | None:
+        """
+        Call remote Hugging Face ZeroGPU Space via gradio_client.
+        Runs on free cloud A100 GPUs without local compute.
+        """
+        try:
+            from gradio_client import Client
+        except ImportError:
+            self.log.warn("diffusion", "gradio_client not installed — skipping Cloud GPU Space")
+            return None
+
+        space_id = os.environ.get("HF_VIDEO_SPACE") or "ByteDance/AnimateDiff-Lightning"
+        self.log.step("diffusion", f"Attempting Cloud GPU Space: {space_id}…")
+
+        try:
+            client = Client(space_id, hf_token=self.hf_key or None)
+            job = client.submit(prompt, api_name="/predict")
+            # Up to 45 seconds timeout for remote cloud generation
+            result_path = job.result(timeout=45)
+
+            if result_path and Path(result_path).exists():
+                out = self.work_dir / f"clip_{_slug(prompt)}.mp4"
+                self._normalize_video(Path(result_path), out, width, height, fps)
+                self.log.info("diffusion", f"✅ Cloud GPU Space video generated: {out.name}")
+                return out
+        except Exception as exc:  # noqa: BLE001
+            self.log.warn("diffusion", f"Cloud GPU Space ({space_id}) unavailable: {exc} — falling back to Ken Burns engine")
+            return None
+
+        return None
+
+    # ── Priority 3: Hugging Face Serverless Router ────────────────────────
+
+    def _hf_video_frames(
+        self, prompt: str, duration_s: int, fps: int
+    ) -> list[Image.Image] | None:
+        """HuggingFace text-to-video serverless router (if available)."""
+        if not self.hf_key:
+            return None
+        try:
+            resp = requests.post(
+                _HF_VIDEO_URL,
+                headers={"Authorization": f"Bearer {self.hf_key}"},
+                json={"inputs": prompt},
+                timeout=45,
+            )
+            resp.raise_for_status()
+            gif = Image.open(io.BytesIO(resp.content))
+            frames: list[Image.Image] = []
+            for i in range(min(duration_s * fps, getattr(gif, "n_frames", 1))):
+                gif.seek(i)
+                frames.append(gif.copy().convert("RGB"))
+            return frames or None
+        except Exception as exc:  # noqa: BLE001
+            self.log.warn("diffusion", f"HF serverless video endpoint unavailable: {exc}")
+            return None
+
+    # ── Priority 4 (Fallback): Remote Visual Generation ───────────────────
 
     def _hf_image(self, prompt: str, width: int, height: int) -> Image.Image | None:
-        """HuggingFace Serverless Inference API."""
+        """HuggingFace Serverless Inference (FLUX / SD-2-1)."""
         if not self.hf_key:
             return None
         headers = {"Authorization": f"Bearer {self.hf_key}"}
@@ -121,18 +251,18 @@ class DiffusionWrapper:
                     url,
                     headers=headers,
                     json={"inputs": prompt, "parameters": {"width": width, "height": height}},
-                    timeout=30,
+                    timeout=25,
                 )
                 if resp.status_code == 200:
                     img = Image.open(io.BytesIO(resp.content))
-                    self.log.info("diffusion", f"HF image generated via {url.split('/')[-1]}")
+                    self.log.info("diffusion", f"HF visual generated via {url.split('/')[-1]}")
                     return img
             except Exception as exc:  # noqa: BLE001
-                self.log.warn("diffusion", f"HF image ({url.split('/')[-1]}) failed: {exc}")
+                self.log.warn("diffusion", f"HF visual ({url.split('/')[-1]}) failed: {exc}")
         return None
 
     def _pollinations_image(self, prompt: str, width: int, height: int) -> Image.Image | None:
-        """Pollinations AI — free tier, zero auth, high-res FLUX/SDXL anime visuals."""
+        """Pollinations AI — free tier, zero auth, high-res FLUX anime visuals."""
         try:
             seed = abs(hash(prompt)) % 1000000
             encoded = urllib.parse.quote(prompt[:300])
@@ -144,83 +274,10 @@ class DiffusionWrapper:
             self.log.info("diffusion", f"Pollinations Flux visual generated ({width}x{height})")
             return img
         except Exception as exc:  # noqa: BLE001
-            self.log.warn("diffusion", f"Pollinations image generation failed: {exc}")
+            self.log.warn("diffusion", f"Pollinations visual generation failed: {exc}")
             return None
 
-    # ── Remote Video Generation ───────────────────────────────────────────
-
-    def _hf_video_frames(
-        self, prompt: str, duration_s: int, fps: int
-    ) -> list[Image.Image] | None:
-        """HuggingFace text-to-video (when supported by serverless endpoints)."""
-        if not self.hf_key:
-            return None
-        try:
-            resp = requests.post(
-                _HF_VIDEO_URL,
-                headers={"Authorization": f"Bearer {self.hf_key}"},
-                json={"inputs": prompt},
-                timeout=60,
-            )
-            resp.raise_for_status()
-            gif = Image.open(io.BytesIO(resp.content))
-            frames: list[Image.Image] = []
-            for i in range(min(duration_s * fps, getattr(gif, "n_frames", 1))):
-                gif.seek(i)
-                frames.append(gif.copy().convert("RGB"))
-            return frames or None
-        except Exception as exc:  # noqa: BLE001
-            self.log.warn("diffusion", f"HF video endpoint unavailable ({exc}) — falling back to Ken Burns engine")
-            return None
-
-    # ── Local Generation ──────────────────────────────────────────────────
-
-    def _local_image(self, prompt: str, width: int, height: int) -> Image.Image:
-        """Local SD pipeline (CUDA ONLY). On CPU, returns a high-contrast cinematic card."""
-        try:
-            import torch
-            if torch.cuda.is_available():
-                from diffusers import StableDiffusionPipeline  # type: ignore
-
-                self.log.info("diffusion", "Local SD image (GPU)")
-                pipe = StableDiffusionPipeline.from_pretrained(
-                    "runwayml/stable-diffusion-v1-5", torch_dtype=torch.float16
-                )
-                pipe.to("cuda")
-                return pipe(prompt, num_inference_steps=15, width=width, height=height).images[0]
-        except Exception as exc:  # noqa: BLE001
-            self.log.warn("diffusion", f"Local GPU SD failed: {exc}")
-
-        # Fast CPU placeholder (avoids hanging runner on slow CPU diffusion)
-        return self._placeholder_image(prompt, width, height)
-
-    def _local_video_frames(
-        self, prompt: str, duration_s: int, fps: int
-    ) -> list[Image.Image] | None:
-        """AnimateDiff (CUDA ONLY). CPU is strictly skipped to prevent 40+ minute CI hangs."""
-        try:
-            import torch
-            if not torch.cuda.is_available():
-                self.log.info("diffusion", "No CUDA GPU detected — skipping CPU AnimateDiff (Ken Burns engine will be used)")
-                return None
-
-            from diffusers import AnimateDiffPipeline, MotionAdapter  # type: ignore
-
-            self.log.info("diffusion", "Local AnimateDiff (GPU)")
-            adapter = MotionAdapter.from_pretrained("guoyww/animatediff-motion-adapter-v1-5-2")
-            pipe = AnimateDiffPipeline.from_pretrained(
-                "runwayml/stable-diffusion-v1-5",
-                motion_adapter=adapter,
-                torch_dtype=torch.float16,
-            )
-            pipe.to("cuda")
-            result = pipe(prompt, num_frames=duration_s * fps, num_inference_steps=15)
-            return result.frames[0]
-        except Exception as exc:  # noqa: BLE001
-            self.log.warn("diffusion", f"Local GPU AnimateDiff failed: {exc}")
-            return None
-
-    # ── Cinematic Ken Burns Engine ────────────────────────────────────────
+    # ── Cinematic Ken Burns Motion Engine ─────────────────────────────────
 
     @staticmethod
     def _image_to_ken_burns_frames(
@@ -231,48 +288,38 @@ class DiffusionWrapper:
         height: int,
         motion: str = "zoom_in",
     ) -> list[Image.Image]:
-        """
-        Creates smooth camera motion across the source visual.
-        Runs in ~0.05s via optimized sub-pixel PIL crops.
-        """
-        # Ensure base image is high resolution
+        """Creates smooth cinematic camera movements across the visual."""
         base = img.resize((width, height), Image.LANCZOS)
         total_frames = max(duration_s * fps, 1)
         frames: list[Image.Image] = []
-
         max_zoom = 1.15
 
         for i in range(total_frames):
             progress = i / max(total_frames - 1, 1)
 
             if motion == "zoom_in":
-                # Smooth push towards center
                 zoom = 1.0 + (max_zoom - 1.0) * progress
                 cw, ch = int(width / zoom), int(height / zoom)
                 x = (width - cw) // 2
                 y = (height - ch) // 2
             elif motion == "zoom_out":
-                # Smooth pull back from center
                 zoom = max_zoom - (max_zoom - 1.0) * progress
                 cw, ch = int(width / zoom), int(height / zoom)
                 x = (width - cw) // 2
                 y = (height - ch) // 2
             elif motion == "pan_right":
-                # Zoomed in, pan left to right
                 zoom = 1.12
                 cw, ch = int(width / zoom), int(height / zoom)
                 max_x = width - cw
                 x = int(max_x * progress)
                 y = (height - ch) // 2
             elif motion == "pan_left":
-                # Zoomed in, pan right to left
                 zoom = 1.12
                 cw, ch = int(width / zoom), int(height / zoom)
                 max_x = width - cw
                 x = int(max_x * (1.0 - progress))
                 y = (height - ch) // 2
             elif motion == "tilt_up":
-                # Zoomed in, tilt bottom to top
                 zoom = 1.12
                 cw, ch = int(width / zoom), int(height / zoom)
                 max_y = height - ch
@@ -294,34 +341,17 @@ class DiffusionWrapper:
         """Aesthetic dark cinematic card with scene text."""
         img = Image.new("RGB", (width, height), color=(15, 15, 28))
         draw = ImageDraw.Draw(img)
-        # Subtle horizontal accent lines
         draw.rectangle([(0, 0), (width, 8)], fill=(138, 43, 226))
         draw.rectangle([(0, height - 8), (width, height)], fill=(75, 0, 130))
-        # Title snippet
-        draw.text(
-            (width // 2, height // 2),
-            prompt[:90],
-            fill=(220, 220, 240),
-            anchor="mm",
-        )
+        draw.text((width // 2, height // 2), prompt[:90], fill=(220, 220, 240), anchor="mm")
         return img
 
-    @staticmethod
-    def _placeholder_frames(
-        duration_s: int, fps: int, width: int, height: int
-    ) -> list[Image.Image]:
-        n = max(duration_s * fps, 1)
-        colours = [(15, 15, min(255, 30 + i * 2)) for i in range(n)]
-        return [Image.new("RGB", (width, height), c) for c in colours]
-
-    # ── Frame → MP4 ───────────────────────────────────────────────────────
+    # ── FFmpeg Helpers ────────────────────────────────────────────────────
 
     @staticmethod
     def _frames_to_mp4(
         frames: list[Image.Image], out: Path, fps: int, width: int, height: int
     ) -> None:
-        import subprocess, tempfile
-
         with tempfile.TemporaryDirectory() as tmpdir:
             for i, frame in enumerate(frames):
                 frame.resize((width, height)).save(f"{tmpdir}/f{i:04d}.png")
@@ -333,6 +363,20 @@ class DiffusionWrapper:
                 "-pix_fmt", "yuv420p",
                 str(out),
             ], capture_output=True, check=True)
+
+    @staticmethod
+    def _normalize_video(
+        src: Path, out: Path, width: int, height: int, fps: int
+    ) -> None:
+        """Ensure downloaded video matches target resolution and framerate."""
+        subprocess.run([
+            "ffmpeg", "-y",
+            "-i", str(src),
+            "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,fps={fps}",
+            "-c:v", "libx264", "-preset", "ultrafast",
+            "-pix_fmt", "yuv420p",
+            str(out),
+        ], capture_output=True, check=True)
 
 
 def _slug(text: str, max_len: int = 20) -> str:

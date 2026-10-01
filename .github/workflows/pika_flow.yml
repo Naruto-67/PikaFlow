@@ -81,6 +81,9 @@ jobs:
       OPENROUTER_API_KEY:   ${{ secrets.OPENROUTER_API_KEY }}
       HUGGINGFACE_API_KEY:  ${{ secrets.HUGGINGFACE_API_KEY || secrets.HF_TOKEN }}
       HF_TOKEN:             ${{ secrets.HF_TOKEN || secrets.HUGGINGFACE_API_KEY }}
+      CLOUDFLARE_VIDEO_API_URL: ${{ secrets.CLOUDFLARE_VIDEO_API_URL || vars.CLOUDFLARE_VIDEO_API_URL }}
+      CLOUDFLARE_API_KEY:       ${{ secrets.CLOUDFLARE_API_KEY }}
+      HF_VIDEO_SPACE:           ${{ secrets.HF_VIDEO_SPACE || vars.HF_VIDEO_SPACE }}
       FREESOUND_API_KEY:    ${{ secrets.FREESOUND_API_KEY }}
       YOUTUBE_CLIENT_ID:    ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
