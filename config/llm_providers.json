@@ -3,10 +3,10 @@
     {
       "id": "gemini",
       "name": "Google Gemini",
-      "model": "gemini-1.5-flash",
+      "model": "gemini-1.5-flash-001",
       "type": "text",
       "base_url": "https://generativelanguage.googleapis.com/",
-      "endpoint": "v1beta/models/gemini-1.5-flash:generateContent",
+      "endpoint": "v1beta/models/gemini-1.5-flash-001:generateContent",
       "auth_header": "x-goog-api-key",
       "secret_key": "GEMINI_API_KEY",
       "quota": {
@@ -20,7 +20,7 @@
     {
       "id": "groq",
       "name": "Groq",
-      "model": "llama3-8b-8192",
+      "model": "llama-3.1-8b-instant",
       "type": "text",
       "base_url": "https://api.groq.com/",
       "endpoint": "openai/v1/chat/completions",
@@ -36,8 +36,8 @@
     },
     {
       "id": "openrouter_mistral",
-      "name": "OpenRouter (Mistral 7B)",
-      "model": "mistralai/mistral-7b-instruct:free",
+      "name": "OpenRouter (Llama 3.1 8B)",
+      "model": "meta-llama/llama-3.1-8b-instruct:free",
       "type": "text",
       "base_url": "https://openrouter.ai/",
       "endpoint": "api/v1/chat/completions",

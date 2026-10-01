@@ -29,12 +29,12 @@ _TEST_PAYLOAD = {
         "contents": [{"parts": [{"text": "Reply with: OK"}]}]
     },
     "groq": {
-        "model": "llama3-8b-8192",
+        "model": "llama-3.1-8b-instant",
         "messages": [{"role": "user", "content": "Reply with: OK"}],
         "max_tokens": 5,
     },
     "openrouter_mistral": {
-        "model": "mistralai/mistral-7b-instruct:free",
+        "model": "meta-llama/llama-3.1-8b-instruct:free",
         "messages": [{"role": "user", "content": "Reply with: OK"}],
         "max_tokens": 5,
     },
@@ -70,6 +70,32 @@ def _get_api_key(secret_key: str | None) -> str:
     return os.environ.get(secret_key, "")
 
 
+import re
+
+DEPRECATED_KNOWN = {
+    "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash",
+    "gemini-1.5-flash-8b", "gemini-1.5-pro", "gemini-2.0-pro",
+    "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite",
+    "mixtral-8x7b-32768", "gemma2-9b-it", "llama3-70b-8192", "llama3-8b-8192",
+    "mistralai/mistral-7b-instruct:free"
+}
+
+BANNED_MODALITY_PATTERNS = [
+    r"image", r"picture", r"tts", r"audio", r"live", r"embed",
+    r"robotics", r"video", r"veo", r"whisper", r"transcribe",
+    r"guard", r"safeguard", r"deepseek-r1-distill-qwen-1\.5b",
+    r"omni", r"imagen",
+    r"orpheus", r"canopylabs", r"speech", r"voice", r"sound", r"realtime",
+    r"inkling",
+]
+
+def is_modality_allowed(model_name: str) -> bool:
+    lowered = model_name.lower()
+    for pattern in BANNED_MODALITY_PATTERNS:
+        if re.search(pattern, lowered):
+            return False
+    return True
+
 def _refresh_model_ids(providers: list[dict]) -> None:
     """Query each provider's /models endpoint to find the latest active/free model."""
     for p in providers:
@@ -86,13 +112,13 @@ def _refresh_model_ids(providers: list[dict]) -> None:
                 resp = requests.get(url, timeout=10)
                 if resp.status_code == 200:
                     models = [
-                        m["name"] for m in resp.json().get("models", [])
+                        m["name"].replace("models/", "") for m in resp.json().get("models", [])
                         if "flash" in m["name"] and "generateContent" in m.get("supportedGenerationMethods", [])
-                        and "exp" not in m["name"] and "vision" not in m["name"]
                     ]
-                    if models:
-                        models.sort(reverse=True) # Usually gemini-1.5-flash > gemini-1.0-flash
-                        best_model = models[0].replace("models/", "")
+                    valid_models = [m for m in models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
+                    if valid_models:
+                        valid_models.sort(reverse=True) # Usually gemini-1.5-flash-002 > gemini-1.5-flash-001
+                        best_model = valid_models[0]
                         p["model"] = best_model
                         p["endpoint"] = f"v1beta/models/{best_model}:generateContent"
                         print(f"  🔄 Discovered Gemini model: {best_model}")
@@ -105,8 +131,9 @@ def _refresh_model_ids(providers: list[dict]) -> None:
                 resp = requests.get(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=10)
                 if resp.status_code == 200:
                     models = [m["id"] for m in resp.json().get("data", []) if m.get("active", True)]
-                    llama = [m for m in models if "llama-3" in m.lower() or "llama3" in m.lower()]
-                    best_model = llama[0] if llama else models[0]
+                    valid_models = [m for m in models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
+                    llama = [m for m in valid_models if "llama-3" in m.lower() or "llama3" in m.lower()]
+                    best_model = llama[0] if llama else (valid_models[0] if valid_models else "llama3-8b-8192")
                     p["model"] = best_model
                     print(f"  🔄 Discovered Groq model: {best_model}")
             except Exception as e:
@@ -121,9 +148,10 @@ def _refresh_model_ids(providers: list[dict]) -> None:
                         m["id"] for m in resp.json().get("data", [])
                         if m.get("pricing", {}).get("prompt") == "0" and m.get("pricing", {}).get("completion") == "0"
                     ]
-                    if free_models:
-                        preferred = [m for m in free_models if "mistral" in m.lower() or "llama" in m.lower()]
-                        best_model = preferred[0] if preferred else free_models[0]
+                    valid_models = [m for m in free_models if m not in DEPRECATED_KNOWN and is_modality_allowed(m)]
+                    if valid_models:
+                        preferred = [m for m in valid_models if "mistral" in m.lower() or "llama" in m.lower()]
+                        best_model = preferred[0] if preferred else valid_models[0]
                         p["model"] = best_model
                         print(f"  🔄 Discovered OpenRouter model: {best_model}")
             except Exception as e:
