@@ -157,10 +157,13 @@ async def run(spec_path: Path) -> None:
         narration = audio.generate_narration(narrator_text)
 
         total_duration = sum(s.get("duration_s", 4) for s in scenes)
-        bg_music = audio.fetch_bg_music(
-            query=metadata.get("tags", ["background music"])[0] + " background music",
-            duration_s=total_duration,
-        )
+        
+        bg_music = None
+        if spec.get("use_music", True):
+            bg_music = audio.fetch_bg_music(
+                query=metadata.get("tags", ["background music"])[0] + " background music",
+                duration_s=total_duration,
+            )
 
         # ── Stage 6: Video Editing ─────────────────────────────────────────
         log.step("orchestrator", "▶ Stage 6 — Video Editing")

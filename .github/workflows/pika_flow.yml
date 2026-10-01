@@ -54,6 +54,9 @@ jobs:
             "run_id": "'"${RUN_ID}"'",
             "prompt": "${{ github.event.inputs.prompt || github.event.client_payload.prompt }}",
             "format": "${{ github.event.inputs.format || github.event.client_payload.format || 'medium' }}",
+            "resolution": "${{ github.event.client_payload.resolution || '' }}",
+            "style_keywords": "${{ github.event.client_payload.style_keywords || '' }}",
+            "use_music": ${{ github.event.client_payload.use_music != false }},
             "scenes": []
           }' > "pika_work/${RUN_ID}/run_spec.json"
 
