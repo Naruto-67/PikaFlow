@@ -1,6 +1,7 @@
 {
-  "channel_name": "Animerise",
-  "niche": "anime-style AI art tutorials",
+  "_comment": "Edit this file to configure PikaFlow for your channel and niche.",
+  "channel_name": "YourChannelName",
+  "niche": "your niche here (e.g. anime-style AI art, tech tips, fact videos)",
   "platform": "youtube",
   "video_format": {
     "short": {

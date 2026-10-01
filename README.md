@@ -1,17 +1,17 @@
-# 🌸 PikaFlow — Animerise Channel Automation
+# 🌸 PikaFlow — AI-Powered YouTube Video Automation
 
-> **AI‑powered anime‑style YouTube video pipeline, running entirely on free‑tier services via GitHub Actions.**
+> **Generate, edit, and publish high-quality videos automatically — entirely on free-tier services via GitHub Actions.**
 
 ---
 
 ## What is PikaFlow?
 
-PikaFlow is a modern, zero‑cost video‑automation system that:
+PikaFlow is a modern, zero-cost video automation system that:
 
-- Generates **full anime‑style video clips** (via CPU‑only Stable Video Diffusion / AnimateDiff)
-- Adds **AI narration** (Bark TTS), **background music**, **kinetic captions**, and **lower‑thirds**
-- Edits the timeline automatically (CapCut‑style AI editing via FFmpeg)
-- Uploads the final video to the **Animerise** YouTube channel
+- Generates **full video clips** from a text prompt (via video-diffusion models)
+- Adds **AI narration** (Bark TTS), **background music**, **kinetic captions**, and **lower-thirds**
+- Edits the timeline automatically (CapCut-style AI editing via FFmpeg)
+- Supports **any niche or channel** — configure it once via `config/channel_config.json`
 - Runs 100% on **GitHub Actions** — no paid cloud infra required
 
 ---
@@ -53,7 +53,7 @@ PikaFlow/
 │       ├── connection_manager.py # HTTP client with retry & circuit‑breaker
 │       └── schema_validator.py   # JSON‑Schema config validation
 ├── config/
-│   ├── channel_config.json       # Channel / niche settings
+│   ├── channel_config.json       # Channel / niche settings (edit this for your channel)
 │   ├── llm_providers.json        # Auto‑generated free‑tier provider list
 │   ├── quotas_state.json         # Per‑run quota tracker
 │   ├── llm_performance.json      # Provider benchmark history
