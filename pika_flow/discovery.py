@@ -70,6 +70,66 @@ def _get_api_key(secret_key: str | None) -> str:
     return os.environ.get(secret_key, "")
 
 
+def _refresh_model_ids(providers: list[dict]) -> None:
+    """Query each provider's /models endpoint to find the latest active/free model."""
+    for p in providers:
+        if p.get("base_url") == "local":
+            continue
+            
+        api_key = _get_api_key(p.get("secret_key"))
+        if not api_key and p["id"] != "openrouter_mistral":
+            continue
+            
+        if p["id"] == "gemini":
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+                resp = requests.get(url, timeout=10)
+                if resp.status_code == 200:
+                    models = [
+                        m["name"] for m in resp.json().get("models", [])
+                        if "flash" in m["name"] and "generateContent" in m.get("supportedGenerationMethods", [])
+                        and "exp" not in m["name"] and "vision" not in m["name"]
+                    ]
+                    if models:
+                        models.sort(reverse=True) # Usually gemini-1.5-flash > gemini-1.0-flash
+                        best_model = models[0].replace("models/", "")
+                        p["model"] = best_model
+                        p["endpoint"] = f"/v1beta/models/{best_model}:generateContent"
+                        print(f"  🔄 Discovered Gemini model: {best_model}")
+            except Exception as e:
+                print(f"  ⚠️ Failed to discover Gemini models: {e}")
+                
+        elif p["id"] == "groq":
+            try:
+                url = "https://api.groq.com/openai/v1/models"
+                resp = requests.get(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=10)
+                if resp.status_code == 200:
+                    models = [m["id"] for m in resp.json().get("data", []) if m.get("active", True)]
+                    llama = [m for m in models if "llama-3" in m.lower() or "llama3" in m.lower()]
+                    best_model = llama[0] if llama else models[0]
+                    p["model"] = best_model
+                    print(f"  🔄 Discovered Groq model: {best_model}")
+            except Exception as e:
+                print(f"  ⚠️ Failed to discover Groq models: {e}")
+                
+        elif p["id"] == "openrouter_mistral":
+            try:
+                url = "https://openrouter.ai/api/v1/models"
+                resp = requests.get(url, timeout=10)
+                if resp.status_code == 200:
+                    free_models = [
+                        m["id"] for m in resp.json().get("data", [])
+                        if m.get("pricing", {}).get("prompt") == "0" and m.get("pricing", {}).get("completion") == "0"
+                    ]
+                    if free_models:
+                        preferred = [m for m in free_models if "mistral" in m.lower() or "llama" in m.lower()]
+                        best_model = preferred[0] if preferred else free_models[0]
+                        p["model"] = best_model
+                        print(f"  🔄 Discovered OpenRouter model: {best_model}")
+            except Exception as e:
+                print(f"  ⚠️ Failed to discover OpenRouter models: {e}")
+
+
 def _health_check(provider: dict) -> dict:
     """
     Send a minimal request to the provider and return health metrics.
@@ -89,7 +149,9 @@ def _health_check(provider: dict) -> dict:
         else:
             headers[auth_header] = api_key
 
-    payload = _TEST_PAYLOAD.get(provider["id"], {"inputs": "OK"})
+    payload = _TEST_PAYLOAD.get(provider["id"], {"inputs": "OK"}).copy()
+    if "model" in payload:
+        payload["model"] = provider["model"]
 
     try:
         start = time.time()
@@ -126,6 +188,8 @@ def run() -> None:
     providers   = _load_providers()
     performance = _load_performance()
 
+    _refresh_model_ids(providers)
+    
     for p in providers:
         if p.get("base_url") == "local":
             print(f"  ⚪ {p['name']:30s} — local model, skipping HTTP check")
