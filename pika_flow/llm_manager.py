@@ -257,6 +257,20 @@ class LLMManager:
         )
         data = resp.json()
 
+        # ── API-level error detection (HTTP 200 but error body) ──
+        # Gemini can return errors like "model output must contain either output text
+        # or tool calls, these cannot both be empty" as a 200 with {"error": {...}}.
+        if isinstance(data, dict) and "error" in data and "candidates" not in data:
+            err_msg = data["error"].get("message", str(data["error"]))
+            err_code = data["error"].get("code", 0)
+            err_status = data["error"].get("status", "")
+            # Treat 404 / NOT_FOUND as permanent → ban; everything else → fallback
+            if err_code == 404 or err_status in ("NOT_FOUND", "RESOURCE_EXHAUSTED"):
+                raise PikaConnectionError(f"404 decommissioned: {err_msg}")
+            raise PikaConnectionError(
+                f"Provider {provider['id']} API error [{err_code}]: {err_msg}"
+            )
+
         # ── Response Translation ──
         # Translating back to Gemini format so orchestrator/seo_generator parsing doesn't break
         if is_openai and "choices" in data and len(data["choices"]) > 0:
@@ -272,13 +286,28 @@ class LLMManager:
             if not content.strip():
                 raise PikaConnectionError(f"Provider {provider['id']} returned empty response content")
             data = {"candidates": [{"content": {"parts": [{"text": content}]}}]}
-        elif is_gemini and "candidates" in data and len(data["candidates"]) > 0:
+        elif is_gemini:
+            candidates = data.get("candidates", [])
+            if not candidates:
+                # Empty candidates list — could be SAFETY/RECITATION block or the
+                # "model output must contain either output text or tool calls" error
+                # surfaced through promptFeedback. Treat as a transient failure.
+                block_reason = data.get("promptFeedback", {}).get("blockReason", "UNKNOWN")
+                raise PikaConnectionError(
+                    f"Provider {provider['id']} returned no candidates (blockReason={block_reason})"
+                )
             try:
-                candidate_text = data["candidates"][0]["content"]["parts"][0].get("text", "")
+                candidate_text = candidates[0]["content"]["parts"][0].get("text", "")
                 if not candidate_text.strip():
-                    raise PikaConnectionError(f"Provider {provider['id']} returned empty content")
+                    # Could be a function-call candidate with no text — not valid for us
+                    finish_reason = candidates[0].get("finishReason", "UNKNOWN")
+                    raise PikaConnectionError(
+                        f"Provider {provider['id']} returned empty text content (finishReason={finish_reason})"
+                    )
             except (KeyError, IndexError, TypeError):
-                raise PikaConnectionError(f"Provider {provider['id']} returned invalid Gemini response format")
+                raise PikaConnectionError(
+                    f"Provider {provider['id']} returned invalid Gemini response format"
+                )
 
         return data
 
