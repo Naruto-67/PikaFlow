@@ -1,0 +1,32 @@
+{
+  "channel_name": "Animerise",
+  "niche": "anime-style AI art tutorials",
+  "platform": "youtube",
+  "video_format": {
+    "short": {
+      "duration_range_s": [30, 60],
+      "aspect_ratio": "9:16",
+      "resolution": "1080x1920",
+      "fps": 30
+    },
+    "medium": {
+      "duration_range_s": [120, 300],
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080",
+      "fps": 30
+    },
+    "long": {
+      "duration_range_s": [600, 1800],
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080",
+      "fps": 30,
+      "chunks": 7
+    }
+  },
+  "default_format": "medium",
+  "visual_mode": "animeFrameRendered",
+  "style_keywords": ["anime", "pastel", "cinematic", "soft lighting"],
+  "language": "en",
+  "auto_upload": false,
+  "auto_upload_schedule": "manual"
+}

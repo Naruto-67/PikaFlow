@@ -1,0 +1,42 @@
+{
+  "transition": "fade",
+  "transition_duration": 0.5,
+  "transition_offset_s": 0.0,
+  "caption": {
+    "x": "(w-text_w)/2",
+    "y": "h-180",
+    "size": 52,
+    "color": "ffffff",
+    "box_color": "black@0.45",
+    "box": 1,
+    "font": "assets/fonts/OpenSans-Bold.ttf"
+  },
+  "lower_third": {
+    "template": "assets/templates/lower_third.svg",
+    "duration_s": 3.5,
+    "y_offset": 80
+  },
+  "intro": {
+    "enabled": true,
+    "asset": "assets/templates/intro.png",
+    "duration_s": 3
+  },
+  "outro": {
+    "enabled": true,
+    "asset": "assets/templates/outro.png",
+    "duration_s": 5
+  },
+  "bg_music": {
+    "enabled": true,
+    "duck_ratio": 4,
+    "duck_threshold": 0.1,
+    "volume": 0.3
+  },
+  "ffmpeg_output_opts": {
+    "vcodec": "libx264",
+    "acodec": "aac",
+    "audio_bitrate": "192k",
+    "preset": "fast",
+    "crf": 23
+  }
+}

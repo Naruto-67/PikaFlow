@@ -1,0 +1,45 @@
+name: 🔍 Nightly LLM Discovery
+
+on:
+  schedule:
+    - cron: "0 0 * * *"   # runs daily at 00:00 UTC
+  workflow_dispatch:
+
+jobs:
+  discover:
+    name: Discover & Health‑Check Free Providers
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      GEMINI_API_KEY:       ${{ secrets.GEMINI_API_KEY }}
+      GROQ_API_KEY:         ${{ secrets.GROQ_API_KEY }}
+      OPENROUTER_API_KEY:   ${{ secrets.OPENROUTER_API_KEY }}
+      HUGGINGFACE_API_KEY:  ${{ secrets.HUGGINGFACE_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run discovery & health‑check
+        run: python -m pika_flow.discovery
+
+      - name: Commit updated provider configs
+        run: |
+          git config user.name  "PikaFlow Bot"
+          git config user.email "pikaflow-bot@users.noreply.github.com"
+          git add config/llm_providers.json config/llm_performance.json
+          git diff --cached --quiet || git commit -m "chore: nightly provider discovery $(date +'%d-%m-%Y')"
+          git push

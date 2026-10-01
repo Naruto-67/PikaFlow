@@ -1,0 +1,7 @@
+{
+  "pyodide_preview": true,
+  "dark_mode": true,
+  "log_viewer": { "auto_refresh_s": 10, "max_lines": 500 },
+  "alerts": { "browser_notifications": true, "discord": true },
+  "panel_token_ttl_min": 15
+}

@@ -1,0 +1,11 @@
+{
+  "providers": {
+    "gemini":               { "avg_latency_ms": null, "success_rate": null, "best_for": ["script", "seo"] },
+    "groq":                 { "avg_latency_ms": null, "success_rate": null, "best_for": ["scene_prompts"] },
+    "openrouter_mistral":   { "avg_latency_ms": null, "success_rate": null, "best_for": ["captions"] },
+    "huggingface_flan":     { "avg_latency_ms": null, "success_rate": null, "best_for": ["summarization"] },
+    "stability_diffusion":  { "avg_latency_ms": null, "success_rate": null, "best_for": ["image"] },
+    "bark_tts":             { "avg_latency_ms": null, "success_rate": null, "best_for": ["tts"] }
+  },
+  "_meta": { "last_updated": null, "schema_version": "1.0" }
+}
