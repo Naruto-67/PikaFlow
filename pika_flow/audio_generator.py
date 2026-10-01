@@ -75,6 +75,11 @@ class AudioGenerator:
         out = self.work_dir / "narration.wav"
 
         script = _normalize_tts_text(script)
+        if not script or not script.strip():
+            self.log.warn("audio_generator", "Narration script is empty — creating silent audio")
+            self._silent_audio(out, duration_s=10)
+            self.log.info("audio_generator", f"Narration ready → {out.name}")
+            return out
 
         success = self._bark_tts(script, out)
         if not success:
@@ -87,24 +92,46 @@ class AudioGenerator:
     def _bark_tts(self, text: str, out: Path) -> bool:
         """Generate audio with Bark TTS (local, offline)."""
         try:
-            from bark import SAMPLE_RATE, generate_audio, preload_models  # type: ignore
-            import scipy.io.wavfile as wav
-            import numpy as np
+            import torch
+            try:
+                import numpy as np
+                safe_globals = []
+                for mod in [getattr(np, "_core", None), getattr(np, "core", None)]:
+                    if mod and hasattr(mod, "multiarray") and hasattr(mod.multiarray, "scalar"):
+                        safe_globals.append(mod.multiarray.scalar)
+                if safe_globals and hasattr(torch.serialization, "add_safe_globals"):
+                    torch.serialization.add_safe_globals(safe_globals)
+            except Exception:
+                pass
 
-            self.log.info("audio_generator", "Loading Bark models (first run may take a few minutes)…")
-            preload_models()
+            orig_torch_load = torch.load
+            def safe_torch_load(*args, **kwargs):
+                if "weights_only" not in kwargs:
+                    kwargs["weights_only"] = False
+                return orig_torch_load(*args, **kwargs)
 
-            # Split long scripts into chunks (Bark handles ~200 words at once)
-            chunks  = _split_text(text, max_words=200)
-            samples = []
-            for i, chunk in enumerate(chunks):
-                self.log.info("audio_generator", f"Bark chunk {i + 1}/{len(chunks)}")
-                audio = generate_audio(chunk)
-                samples.append(audio)
+            torch.load = safe_torch_load
+            try:
+                from bark import SAMPLE_RATE, generate_audio, preload_models  # type: ignore
+                import scipy.io.wavfile as wav
+                import numpy as np
 
-            combined = np.concatenate(samples)
-            wav.write(str(out), SAMPLE_RATE, combined)
-            return True
+                self.log.info("audio_generator", "Loading Bark models (first run may take a few minutes)…")
+                preload_models()
+
+                # Split long scripts into chunks (Bark handles ~200 words at once)
+                chunks  = _split_text(text, max_words=200)
+                samples = []
+                for i, chunk in enumerate(chunks):
+                    self.log.info("audio_generator", f"Bark chunk {i + 1}/{len(chunks)}")
+                    audio = generate_audio(chunk)
+                    samples.append(audio)
+
+                combined = np.concatenate(samples)
+                wav.write(str(out), SAMPLE_RATE, combined)
+                return True
+            finally:
+                torch.load = orig_torch_load
 
         except Exception as exc:  # noqa: BLE001
             self.log.warn("audio_generator", f"Bark error: {exc}")

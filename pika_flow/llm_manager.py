@@ -15,7 +15,7 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from pika_flow.logger import PikaLogger
 from pika_flow.utils.connection_manager import (
@@ -137,6 +137,7 @@ class LLMManager:
         task_type: str,
         payload: dict[str, Any],
         tried: list[str] | None = None,
+        validator: Callable[[dict], bool] | None = None,
     ) -> dict:
         """
         Call the best available provider for task_type.
@@ -146,6 +147,7 @@ class LLMManager:
             task_type: "text" | "image" | "tts"
             payload:   provider‑agnostic request body
             tried:     list of provider ids already attempted (internal)
+            validator: optional callback to validate response schema/quality
         """
         tried = tried or []
         candidates = [p for p in self._best_providers(task_type) if p["id"] not in tried]
@@ -161,12 +163,14 @@ class LLMManager:
 
         try:
             result = await self._do_request(provider, payload)
+            if validator and not validator(result):
+                raise PikaConnectionError(f"Provider {provider['id']} output failed quality/schema validation")
             self._record_success(provider["id"])
             return result
 
         except PikaQuotaError:
             self._disable_provider(provider["id"])
-            return await self.call(task_type, payload, tried + [provider["id"]])
+            return await self.call(task_type, payload, tried + [provider["id"]], validator=validator)
 
         except PikaConnectionError as exc:
             err_str = str(exc).lower()
@@ -174,7 +178,7 @@ class LLMManager:
                 self._ban_model(provider.get("model", ""))
                 self._disable_provider(provider["id"])
             self.logger.warn("llm_manager", f"Provider {provider['id']} failed: {exc}")
-            return await self.call(task_type, payload, tried + [provider["id"]])
+            return await self.call(task_type, payload, tried + [provider["id"]], validator=validator)
 
         except Exception as exc:
             err_str = str(exc).lower()
@@ -182,7 +186,7 @@ class LLMManager:
                 self._ban_model(provider.get("model", ""))
                 self._disable_provider(provider["id"])
             self.logger.warn("llm_manager", f"Provider {provider['id']} encountered error: {exc}")
-            return await self.call(task_type, payload, tried + [provider["id"]])
+            return await self.call(task_type, payload, tried + [provider["id"]], validator=validator)
 
     async def _do_request(self, provider: dict, payload: dict) -> dict:
         """Build provider‑specific request and call ConnectionManager."""
@@ -255,12 +259,26 @@ class LLMManager:
 
         # ── Response Translation ──
         # Translating back to Gemini format so orchestrator/seo_generator parsing doesn't break
-        if is_openai and "choices" in data:
-            content = data["choices"][0]["message"].get("content", "")
+        if is_openai and "choices" in data and len(data["choices"]) > 0:
+            msg = data["choices"][0].get("message", {})
+            content = msg.get("content") or ""
+            if not content.strip():
+                content = msg.get("reasoning_content") or msg.get("reasoning") or ""
+            if not content.strip():
+                raise PikaConnectionError(f"Provider {provider['id']} returned empty response content")
             data = {"candidates": [{"content": {"parts": [{"text": content}]}}]}
         elif is_hf and isinstance(data, list) and len(data) > 0 and "generated_text" in data[0]:
             content = data[0]["generated_text"]
+            if not content.strip():
+                raise PikaConnectionError(f"Provider {provider['id']} returned empty response content")
             data = {"candidates": [{"content": {"parts": [{"text": content}]}}]}
+        elif is_gemini and "candidates" in data and len(data["candidates"]) > 0:
+            try:
+                candidate_text = data["candidates"][0]["content"]["parts"][0].get("text", "")
+                if not candidate_text.strip():
+                    raise PikaConnectionError(f"Provider {provider['id']} returned empty content")
+            except (KeyError, IndexError, TypeError):
+                raise PikaConnectionError(f"Provider {provider['id']} returned invalid Gemini response format")
 
         return data
 

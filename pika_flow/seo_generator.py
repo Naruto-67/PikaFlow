@@ -170,14 +170,20 @@ Return ONLY valid JSON in this exact structure:
   ]
 }}
 """
+        def _validate_seo_response(r: dict) -> bool:
+            raw = self._extract_text(r)
+            meta = self._parse_json_safe(raw, fallback_brief=brief)
+            return bool(meta.get("title") and len(meta.get("tags", [])) > 0)
+
         resp = await self.llm.call(
             task_type="text",
             payload={"contents": [{"parts": [{"text": prompt}]}]},
+            validator=_validate_seo_response,
         )
 
         # Parse the LLM response
         raw_text = self._extract_text(resp)
-        metadata = self._parse_json_safe(raw_text)
+        metadata = self._parse_json_safe(raw_text, fallback_brief=brief)
 
         # Inject auto-generated chapter markers from scene list if LLM missed them
         if not metadata.get("chapters") and scenes:
@@ -195,25 +201,57 @@ Return ONLY valid JSON in this exact structure:
     def _extract_text(resp: dict) -> str:
         """Extract plain text from LLM response (handles Gemini format)."""
         try:
-            return resp["candidates"][0]["content"]["parts"][0]["text"]
-        except (KeyError, IndexError):
+            val = resp["candidates"][0]["content"]["parts"][0]["text"]
+            return str(val) if val is not None else ""
+        except (KeyError, IndexError, TypeError):
             return str(resp)
 
     @staticmethod
-    def _parse_json_safe(text: str) -> dict:
+    def _parse_json_safe(text: str, fallback_brief: dict[str, Any] | None = None) -> dict:
         """Extract and parse JSON block from LLM text output."""
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group(0))
-            except json.JSONDecodeError:
-                pass
+        brief = fallback_brief or {}
+        default_tags = brief.get("keywords") or ["viral", "trending", "ai", "video", "shorts", "background music"]
+        default_title = (brief.get("base_prompt") or "PikaFlow Feature")[:60].strip()
+
+        if text and text.strip():
+            # Strip <think>...</think>
+            cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+            target = cleaned if cleaned else text
+
+            # 1. Try markdown code block
+            code_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', target, re.DOTALL)
+            candidate = code_match.group(1) if code_match else None
+
+            # 2. Try generic json object
+            if not candidate:
+                obj_match = re.search(r'\{.*\}', target, re.DOTALL)
+                if obj_match:
+                    candidate = obj_match.group(0)
+
+            if candidate:
+                sanitized = re.sub(r',\s*([\]}])', r'\1', candidate)
+                sanitized = re.sub(r'//.*', '', sanitized)
+                try:
+                    data = json.loads(sanitized)
+                    if isinstance(data, dict):
+                        if not data.get("title"):
+                            data["title"] = default_title
+                        if not data.get("tags") or not isinstance(data.get("tags"), list):
+                            data["tags"] = default_tags
+                        data.setdefault("description", "")
+                        data.setdefault("hashtags", ["#viral", "#trending"])
+                        data.setdefault("thumbnail_prompt", "")
+                        data.setdefault("chapters", [])
+                        return data
+                except json.JSONDecodeError:
+                    pass
+
         return {
-            "title": "Untitled Video",
-            "description": "",
-            "tags": [],
-            "hashtags": [],
-            "thumbnail_prompt": "",
+            "title": default_title if default_title else "PikaFlow Feature",
+            "description": f"Video discussing {brief.get('base_prompt', 'trending themes')}.",
+            "tags": default_tags,
+            "hashtags": ["#viral", "#trending"],
+            "thumbnail_prompt": f"high quality 4k render of {brief.get('base_prompt', 'cinematic scene')}",
             "chapters": [],
         }
 

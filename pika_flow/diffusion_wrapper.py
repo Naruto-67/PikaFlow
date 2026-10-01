@@ -22,8 +22,8 @@ from PIL import Image
 
 from pika_flow.logger import PikaLogger
 
-_HF_IMAGE_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
-_HF_VIDEO_URL = "https://api-inference.huggingface.co/models/damo-vilab/text-to-video-ms-1.7b"
+_HF_IMAGE_URL = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-2-1"
+_HF_VIDEO_URL = "https://router.huggingface.co/hf-inference/models/damo-vilab/text-to-video-ms-1.7b"
 
 
 class DiffusionWrapper:

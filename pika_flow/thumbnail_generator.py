@@ -74,7 +74,7 @@ class ThumbnailGenerator:
 
     def _hf_inference(self, prompt: str, api_key: str) -> Image.Image:
         """Call HuggingFace Inference API for image generation."""
-        api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
+        api_url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-2-1"
         headers = {"Authorization": f"Bearer {api_key}"}
         payload = {
             "inputs": prompt,

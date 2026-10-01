@@ -49,32 +49,78 @@ def _load_channel_cfg() -> dict:
 def _extract_script_text(llm_resp: dict) -> str:
     """Pull plain text out of an LLM response (handles Gemini format)."""
     try:
-        return llm_resp["candidates"][0]["content"]["parts"][0]["text"]
+        val = llm_resp["candidates"][0]["content"]["parts"][0]["text"]
+        return str(val) if val is not None else ""
     except (KeyError, IndexError, TypeError):
         return str(llm_resp)
 
 
 def _parse_scenes_from_script(script: str, default_duration: int = 4) -> list[dict]:
     """
-    Try to parse a JSON scene list from the LLM script response.
-    Falls back to a single-scene list if JSON is not present.
+    Robustly parse a JSON scene list from the LLM script response.
+    Handles <think> tags, markdown code blocks, JSON dictionaries, comments, trailing commas,
+    and falls back to non-empty narrative paragraphs.
     """
+    if not script or not script.strip():
+        return []
+
     import re
-    match = re.search(r'\[.*\]', script, re.DOTALL)
-    if match:
+    # 1. Clean reasoning / think tags if present
+    cleaned = re.sub(r'<think>.*?</think>', '', script, flags=re.DOTALL).strip()
+    target = cleaned if cleaned else script
+
+    # 2. Extract JSON string from code blocks or bracket patterns
+    candidate_json = None
+    code_match = re.search(r'```(?:json)?\s*(\{.*?\}|\[.*?\])\s*```', target, re.DOTALL)
+    if code_match:
+        candidate_json = code_match.group(1)
+    else:
+        arr_match = re.search(r'\[\s*\{.*\}\s*\]', target, re.DOTALL)
+        if arr_match:
+            candidate_json = arr_match.group(0)
+        else:
+            obj_match = re.search(r'\{\s*".*\}\s*', target, re.DOTALL)
+            if obj_match:
+                candidate_json = obj_match.group(0)
+
+    # 3. Parse JSON candidates
+    if candidate_json:
+        sanitized = re.sub(r',\s*([\]}])', r'\1', candidate_json)
+        sanitized = re.sub(r'//.*', '', sanitized)
         try:
-            scenes = json.loads(match.group(0))
-            if isinstance(scenes, list):
-                return scenes
-        except json.JSONDecodeError:
+            parsed = json.loads(sanitized)
+            if isinstance(parsed, dict):
+                for k in ["scenes", "script", "timeline", "shots", "segments"]:
+                    if isinstance(parsed.get(k), list):
+                        parsed = parsed[k]
+                        break
+            if isinstance(parsed, list):
+                valid = [
+                    s for s in parsed
+                    if isinstance(s, dict) and (s.get("description") or s.get("prompt"))
+                ]
+                if valid:
+                    for i, s in enumerate(valid):
+                        s.setdefault("duration_s", default_duration)
+                        s.setdefault("prompt", s.get("description", ""))
+                        s.setdefault("description", s.get("prompt", ""))
+                        s.setdefault("title", f"Scene {i+1}")
+                    return valid
+        except Exception:
             pass
 
-    # Fallback: one scene per paragraph
-    paragraphs = [p.strip() for p in script.split("\n\n") if p.strip()]
-    return [
-        {"prompt": p[:200], "description": p[:200], "duration_s": default_duration}
-        for p in paragraphs[:10]  # cap at 10 scenes
-    ]
+    # 4. Fallback: paragraphs
+    paragraphs = [p.strip() for p in target.split("\n\n") if p.strip() and not p.strip().startswith("```")]
+    scenes = []
+    for i, p in enumerate(paragraphs[:10]):
+        if len(p) > 10:
+            scenes.append({
+                "prompt": p[:200],
+                "description": p[:200],
+                "title": f"Scene {i+1}",
+                "duration_s": default_duration,
+            })
+    return scenes
 
 
 # ── Main pipeline ──────────────────────────────────────────────────────────
@@ -121,12 +167,22 @@ async def run(spec_path: Path) -> None:
             f'"duration_s": <seconds as integer>}}\n\n'
             f"Use {_format_scene_count(fmt)} scenes. No extra text — JSON only."
         )
+        def _validate_script_response(resp: dict) -> bool:
+            txt = _extract_script_text(resp)
+            sc = _parse_scenes_from_script(txt)
+            return len(sc) > 0
+
         script_resp = await llm.call(
             task_type="text",
             payload={"contents": [{"parts": [{"text": script_prompt}]}]},
+            validator=_validate_script_response,
         )
         script_text = _extract_script_text(script_resp)
         scenes      = _parse_scenes_from_script(script_text)
+
+        if not scenes:
+            raise RuntimeError("Failed to generate any valid scenes from LLM providers")
+
         spec["scenes"] = scenes
 
         # Persist updated spec with scenes
@@ -168,8 +224,10 @@ async def run(spec_path: Path) -> None:
         
         bg_music = None
         if spec.get("use_music", True):
+            tags = metadata.get("tags") or ["background music"]
+            first_tag = tags[0] if tags and len(tags) > 0 else "background music"
             bg_music = audio.fetch_bg_music(
-                query=metadata.get("tags", ["background music"])[0] + " background music",
+                query=f"{first_tag} background music",
                 duration_s=total_duration,
             )
 
@@ -178,15 +236,16 @@ async def run(spec_path: Path) -> None:
         editor   = VideoEditor(logger=log, work_dir=work)
         stitched = editor.add_transitions(clips)
 
-        captions = metadata.get("chapters", [])
+        captions = metadata.get("chapters") or []
         # Convert chapter markers to caption format
         caption_list = [
             {
                 "text":  ch.get("label", ""),
-                "start": _time_to_sec(ch.get("time", "0:00")),
-                "end":   _time_to_sec(ch.get("time", "0:00")) + 3.0,
+                "start": _time_to_sec(str(ch.get("time", "0:00"))),
+                "end":   _time_to_sec(str(ch.get("time", "0:00"))) + 3.0,
             }
             for ch in captions
+            if isinstance(ch, dict)
         ]
         if caption_list:
             stitched = editor.overlay_captions(stitched, caption_list)

@@ -270,7 +270,14 @@ def _health_check(provider: dict) -> dict:
     else:
         payload = {"inputs": "Reply with: OK"}
 
-    url = provider["base_url"] + provider["endpoint"]
+    base_url = provider["base_url"]
+    endpoint = provider["endpoint"]
+    if base_url.endswith("/") and endpoint.startswith("/"):
+        url = base_url + endpoint[1:]
+    elif not base_url.endswith("/") and not endpoint.startswith("/"):
+        url = base_url + "/" + endpoint
+    else:
+        url = base_url + endpoint
     if "generativelanguage" in provider["base_url"] and api_key:
         sep = "&" if "?" in url else "?"
         url += f"{sep}key={api_key}"
