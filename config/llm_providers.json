@@ -1,26 +1,9 @@
 {
   "providers": [
     {
-      "id": "gemini",
-      "name": "Google Gemini 3 Flash Preview",
-      "model": "gemini-3-flash-preview",
-      "type": "text",
-      "base_url": "https://generativelanguage.googleapis.com/",
-      "endpoint": "v1beta/models/gemini-3-flash-preview:generateContent",
-      "auth_header": "x-goog-api-key",
-      "secret_key": "GEMINI_API_KEY",
-      "quota": {
-        "requests_per_day": 1500,
-        "reset": "daily"
-      },
-      "priority": 1,
-      "enabled": true,
-      "deprecated": false
-    },
-    {
-      "id": "groq",
-      "name": "Groq (Llama 3.3 70B)",
-      "model": "llama-3.3-70b-versatile",
+      "id": "groq_qwen/qwen3_8_27b",
+      "name": "Groq (qwen/qwen3.8-27b)",
+      "model": "qwen/qwen3.8-27b",
       "type": "text",
       "base_url": "https://api.groq.com/",
       "endpoint": "openai/v1/chat/completions",
@@ -30,41 +13,41 @@
         "requests_per_minute": 30,
         "reset": "per_minute"
       },
+      "priority": 1,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "or_north_mini_code_free",
+      "name": "OpenRouter (north-mini-code:free)",
+      "model": "cohere/north-mini-code:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 2,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_flash_lite_latest",
+      "name": "Google (gemini-flash-lite-latest)",
+      "model": "gemini-flash-lite-latest",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-flash-lite-latest:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
       "priority": 3,
-      "enabled": true,
-      "deprecated": false
-    },
-    {
-      "id": "openrouter_llama",
-      "name": "OpenRouter (Llama 3.3 70B Free)",
-      "model": "meta-llama/llama-3.3-70b-instruct:free",
-      "type": "text",
-      "base_url": "https://openrouter.ai/",
-      "endpoint": "api/v1/chat/completions",
-      "auth_header": "Authorization",
-      "secret_key": "OPENROUTER_API_KEY",
-      "quota": {
-        "tokens_per_day": 25000,
-        "reset": "daily"
-      },
-      "priority": 4,
-      "enabled": true,
-      "deprecated": false
-    },
-    {
-      "id": "openrouter_qwen",
-      "name": "OpenRouter (Qwen 2.5 72B Free)",
-      "model": "qwen/qwen-2.5-72b-instruct:free",
-      "type": "text",
-      "base_url": "https://openrouter.ai/",
-      "endpoint": "api/v1/chat/completions",
-      "auth_header": "Authorization",
-      "secret_key": "OPENROUTER_API_KEY",
-      "quota": {
-        "tokens_per_day": 25000,
-        "reset": "daily"
-      },
-      "priority": 5,
       "enabled": true,
       "deprecated": false
     },
@@ -82,23 +65,517 @@
         "reset": "per_minute"
       },
       "priority": 4,
+      "enabled": false,
+      "deprecated": false
+    },
+    {
+      "id": "groq_openai/gpt_oss_20b",
+      "name": "Groq (openai/gpt-oss-20b)",
+      "model": "openai/gpt-oss-20b",
+      "type": "text",
+      "base_url": "https://api.groq.com/",
+      "endpoint": "openai/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "GROQ_API_KEY",
+      "quota": {
+        "requests_per_minute": 30,
+        "reset": "per_minute"
+      },
+      "priority": 5,
       "enabled": true,
       "deprecated": false
     },
     {
-      "id": "stability_diffusion",
-      "name": "Stability AI (via HuggingFace)",
-      "model": "stabilityai/stable-diffusion-2-1",
-      "type": "image",
-      "base_url": "https://router.huggingface.co/hf-inference/",
-      "endpoint": "models/stabilityai/stable-diffusion-2-1",
+      "id": "or_nemotron_3_super_120b_a12b_free",
+      "name": "OpenRouter (nemotron-3-super-120b-a12b:free)",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
       "auth_header": "Authorization",
-      "secret_key": "HUGGINGFACE_API_KEY",
+      "secret_key": "OPENROUTER_API_KEY",
       "quota": {
-        "unlimited": true
+        "tokens_per_day": 25000,
+        "reset": "daily"
       },
-      "priority": 1,
+      "priority": 6,
       "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_3_1_flash_lite_preview",
+      "name": "Google (gemini-3.1-flash-lite-preview)",
+      "model": "gemini-3.1-flash-lite-preview",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-3.1-flash-lite-preview:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 7,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "groq_openai/gpt_oss_120b",
+      "name": "Groq (openai/gpt-oss-120b)",
+      "model": "openai/gpt-oss-120b",
+      "type": "text",
+      "base_url": "https://api.groq.com/",
+      "endpoint": "openai/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "GROQ_API_KEY",
+      "quota": {
+        "requests_per_minute": 30,
+        "reset": "per_minute"
+      },
+      "priority": 8,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "or_lfm_2_5_2_6b_free",
+      "name": "OpenRouter (lfm-2.5-2.6b:free)",
+      "model": "liquid/lfm-2.5-2.6b:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 9,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_3_5_flash_lite",
+      "name": "Google (gemini-3.5-flash-lite)",
+      "model": "gemini-3.5-flash-lite",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-3.5-flash-lite:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 10,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "groq_allam_2_7b",
+      "name": "Groq (allam-2-7b)",
+      "model": "allam-2-7b",
+      "type": "text",
+      "base_url": "https://api.groq.com/",
+      "endpoint": "openai/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "GROQ_API_KEY",
+      "quota": {
+        "requests_per_minute": 30,
+        "reset": "per_minute"
+      },
+      "priority": 11,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "or_ling_3_0_flash_sante_free",
+      "name": "OpenRouter (ling-3.0-flash-sante:free)",
+      "model": "inclusionai/ling-3.0-flash-sante:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 12,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_3_1_flash_lite",
+      "name": "Google (gemini-3.1-flash-lite)",
+      "model": "gemini-3.1-flash-lite",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-3.1-flash-lite:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 13,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "or_apodex_1_1_mini_free",
+      "name": "OpenRouter (apodex-1.1-mini:free)",
+      "model": "apodex/apodex-1.1-mini:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 14,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_3_flash_preview",
+      "name": "Google (gemini-3-flash-preview)",
+      "model": "gemini-3-flash-preview",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-3-flash-preview:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 15,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "or_laguna_s_2_1_free",
+      "name": "OpenRouter (laguna-s-2.1:free)",
+      "model": "poolside/laguna-s-2.1:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 16,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_3_6_flash",
+      "name": "Google (gemini-3.6-flash)",
+      "model": "gemini-3.6-flash",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-3.6-flash:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 17,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "or_dots_3_note_preview_free",
+      "name": "OpenRouter (dots-3-note-preview:free)",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 18,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_3_8_flash",
+      "name": "Google (gemini-3.8-flash)",
+      "model": "gemini-3.8-flash",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-3.8-flash:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 19,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "or_free",
+      "name": "OpenRouter (free)",
+      "model": "openrouter/free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 20,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_flash_latest",
+      "name": "Google (gemini-flash-latest)",
+      "model": "gemini-flash-latest",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-flash-latest:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 21,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "or_space_bunny_alpha",
+      "name": "OpenRouter (space-bunny-alpha)",
+      "model": "stealth/space-bunny-alpha",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 22,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_3_5_flash",
+      "name": "Google (gemini-3.5-flash)",
+      "model": "gemini-3.5-flash",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-3.5-flash:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 23,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "or_nemotron_3_ultra_550b_a55b_free",
+      "name": "OpenRouter (nemotron-3-ultra-550b-a55b:free)",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 24,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemma_4_26b_a4b_it",
+      "name": "Google (gemma-4-26b-a4b-it)",
+      "model": "gemma-4-26b-a4b-it",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemma-4-26b-a4b-it:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 25,
+      "enabled": false,
+      "deprecated": false
+    },
+    {
+      "id": "or_nemotron_3_5_lightning_free",
+      "name": "OpenRouter (nemotron-3.5-lightning:free)",
+      "model": "nvidia/nemotron-3.5-lightning:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 26,
+      "enabled": true,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemma_4_31b_it",
+      "name": "Google (gemma-4-31b-it)",
+      "model": "gemma-4-31b-it",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemma-4-31b-it:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 27,
+      "enabled": false,
+      "deprecated": false
+    },
+    {
+      "id": "or_qwen3_8_27b_free",
+      "name": "OpenRouter (qwen3.8-27b:free)",
+      "model": "qwen/qwen3.8-27b:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 28,
+      "enabled": false,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_pro_latest",
+      "name": "Google (gemini-pro-latest)",
+      "model": "gemini-pro-latest",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-pro-latest:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 29,
+      "enabled": false,
+      "deprecated": false
+    },
+    {
+      "id": "or_laguna_xs_2_1_free",
+      "name": "OpenRouter (laguna-xs-2.1:free)",
+      "model": "poolside/laguna-xs-2.1:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 30,
+      "enabled": false,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_3_1_pro_preview",
+      "name": "Google (gemini-3.1-pro-preview)",
+      "model": "gemini-3.1-pro-preview",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-3.1-pro-preview:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 31,
+      "enabled": false,
+      "deprecated": false
+    },
+    {
+      "id": "or_gemma_4_26b_a4b_it_free",
+      "name": "OpenRouter (gemma-4-26b-a4b-it:free)",
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 32,
+      "enabled": false,
+      "deprecated": false
+    },
+    {
+      "id": "gemini_gemini_3_7_flash",
+      "name": "Google (gemini-3.7-flash)",
+      "model": "gemini-3.7-flash",
+      "type": "text",
+      "base_url": "https://generativelanguage.googleapis.com/",
+      "endpoint": "v1beta/models/gemini-3.7-flash:generateContent",
+      "auth_header": "x-goog-api-key",
+      "secret_key": "GEMINI_API_KEY",
+      "quota": {
+        "requests_per_day": 1500,
+        "reset": "daily"
+      },
+      "priority": 33,
+      "enabled": false,
+      "deprecated": false
+    },
+    {
+      "id": "or_gemma_4_31b_it_free",
+      "name": "OpenRouter (gemma-4-31b-it:free)",
+      "model": "google/gemma-4-31b-it:free",
+      "type": "text",
+      "base_url": "https://openrouter.ai/",
+      "endpoint": "api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "secret_key": "OPENROUTER_API_KEY",
+      "quota": {
+        "tokens_per_day": 25000,
+        "reset": "daily"
+      },
+      "priority": 34,
+      "enabled": false,
       "deprecated": false
     },
     {
@@ -119,7 +596,7 @@
     }
   ],
   "_meta": {
-    "generated_at": "auto-updated by discovery.yml",
+    "generated_at": "2026-10-02T03:01:57.550809+00:00",
     "schema_version": "1.0"
   }
 }

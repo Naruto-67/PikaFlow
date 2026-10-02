@@ -1,12 +1,183 @@
 {
   "providers": {
-    "gemini":               { "avg_latency_ms": null, "success_rate": null, "best_for": ["script", "seo"] },
-    "groq":                 { "avg_latency_ms": null, "success_rate": null, "best_for": ["scene_prompts"] },
-    "openrouter_mistral":   { "avg_latency_ms": null, "success_rate": null, "best_for": ["captions"] },
-    "huggingface_flan":     { "avg_latency_ms": null, "success_rate": null, "best_for": ["summarization"] },
-    "stability_diffusion":  { "avg_latency_ms": null, "success_rate": null, "best_for": ["image"] },
-    "bark_tts":             { "avg_latency_ms": null, "success_rate": null, "best_for": ["tts"] }
+    "gemini": {
+      "avg_latency_ms": null,
+      "success_rate": null,
+      "best_for": [
+        "script",
+        "seo"
+      ]
+    },
+    "groq": {
+      "avg_latency_ms": null,
+      "success_rate": null,
+      "best_for": [
+        "scene_prompts"
+      ]
+    },
+    "openrouter_mistral": {
+      "avg_latency_ms": null,
+      "success_rate": null,
+      "best_for": [
+        "captions"
+      ]
+    },
+    "huggingface_flan": {
+      "avg_latency_ms": 133,
+      "success_rate": 0.0,
+      "best_for": [
+        "summarization"
+      ]
+    },
+    "stability_diffusion": {
+      "avg_latency_ms": null,
+      "success_rate": null,
+      "best_for": [
+        "image"
+      ]
+    },
+    "bark_tts": {
+      "avg_latency_ms": null,
+      "success_rate": null,
+      "best_for": [
+        "tts"
+      ]
+    },
+    "gemini_gemma_4_26b_a4b_it": {
+      "avg_latency_ms": 232,
+      "success_rate": 0.0
+    },
+    "gemini_gemma_4_31b_it": {
+      "avg_latency_ms": 301,
+      "success_rate": 0.0
+    },
+    "gemini_gemini_flash_latest": {
+      "avg_latency_ms": 3246,
+      "success_rate": 1.0
+    },
+    "gemini_gemini_flash_lite_latest": {
+      "avg_latency_ms": 508,
+      "success_rate": 1.0
+    },
+    "gemini_gemini_pro_latest": {
+      "avg_latency_ms": 50000,
+      "success_rate": 0.0
+    },
+    "gemini_gemini_3_flash_preview": {
+      "avg_latency_ms": 850,
+      "success_rate": 1.0
+    },
+    "gemini_gemini_3_1_pro_preview": {
+      "avg_latency_ms": 50000,
+      "success_rate": 0.0
+    },
+    "gemini_gemini_3_1_flash_lite_preview": {
+      "avg_latency_ms": 529,
+      "success_rate": 1.0
+    },
+    "gemini_gemini_3_1_flash_lite": {
+      "avg_latency_ms": 619,
+      "success_rate": 1.0
+    },
+    "gemini_gemini_3_5_flash": {
+      "avg_latency_ms": 4771,
+      "success_rate": 1.0
+    },
+    "gemini_gemini_3_5_flash_lite": {
+      "avg_latency_ms": 588,
+      "success_rate": 1.0
+    },
+    "gemini_gemini_3_6_flash": {
+      "avg_latency_ms": 981,
+      "success_rate": 1.0
+    },
+    "gemini_gemini_3_7_flash": {
+      "avg_latency_ms": 15000,
+      "success_rate": 0.0
+    },
+    "gemini_gemini_3_8_flash": {
+      "avg_latency_ms": 1991,
+      "success_rate": 1.0
+    },
+    "groq_openai/gpt_oss_20b": {
+      "avg_latency_ms": 135,
+      "success_rate": 1.0
+    },
+    "groq_openai/gpt_oss_120b": {
+      "avg_latency_ms": 291,
+      "success_rate": 1.0
+    },
+    "groq_allam_2_7b": {
+      "avg_latency_ms": 338,
+      "success_rate": 1.0
+    },
+    "groq_qwen/qwen3_8_27b": {
+      "avg_latency_ms": 129,
+      "success_rate": 1.0
+    },
+    "or_apodex_1_1_mini_free": {
+      "avg_latency_ms": 632,
+      "success_rate": 1.0
+    },
+    "or_space_bunny_alpha": {
+      "avg_latency_ms": 1482,
+      "success_rate": 1.0
+    },
+    "or_ling_3_0_flash_sante_free": {
+      "avg_latency_ms": 616,
+      "success_rate": 1.0
+    },
+    "or_qwen3_8_27b_free": {
+      "avg_latency_ms": 50000,
+      "success_rate": 0.0
+    },
+    "or_dots_3_note_preview_free": {
+      "avg_latency_ms": 825,
+      "success_rate": 1.0
+    },
+    "or_lfm_2_5_2_6b_free": {
+      "avg_latency_ms": 373,
+      "success_rate": 1.0
+    },
+    "or_nemotron_3_5_lightning_free": {
+      "avg_latency_ms": 24409,
+      "success_rate": 1.0
+    },
+    "or_laguna_s_2_1_free": {
+      "avg_latency_ms": 722,
+      "success_rate": 1.0
+    },
+    "or_laguna_xs_2_1_free": {
+      "avg_latency_ms": 50000,
+      "success_rate": 0.0
+    },
+    "or_north_mini_code_free": {
+      "avg_latency_ms": 320,
+      "success_rate": 1.0
+    },
+    "or_nemotron_3_ultra_550b_a55b_free": {
+      "avg_latency_ms": 3167,
+      "success_rate": 1.0
+    },
+    "or_gemma_4_26b_a4b_it_free": {
+      "avg_latency_ms": 50000,
+      "success_rate": 0.0
+    },
+    "or_gemma_4_31b_it_free": {
+      "avg_latency_ms": 50000,
+      "success_rate": 0.0
+    },
+    "or_nemotron_3_super_120b_a12b_free": {
+      "avg_latency_ms": 345,
+      "success_rate": 1.0
+    },
+    "or_free": {
+      "avg_latency_ms": 893,
+      "success_rate": 1.0
+    }
   },
-  "_meta": { "last_updated": null, "schema_version": "1.0" }
+  "_meta": {
+    "last_updated": "2026-10-02T03:01:57.551535+00:00",
+    "schema_version": "1.0"
+  }
 }
-
