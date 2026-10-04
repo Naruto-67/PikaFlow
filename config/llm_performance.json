@@ -23,7 +23,7 @@
       ]
     },
     "huggingface_flan": {
-      "avg_latency_ms": 128,
+      "avg_latency_ms": 91,
       "success_rate": 0.0,
       "best_for": [
         "summarization"
@@ -44,7 +44,7 @@
       ]
     },
     "gemini_gemma_4_26b_a4b_it": {
-      "avg_latency_ms": 2018,
+      "avg_latency_ms": 1379,
       "success_rate": 1.0
     },
     "gemini_gemma_4_31b_it": {
@@ -52,11 +52,11 @@
       "success_rate": 0.0
     },
     "gemini_gemini_flash_latest": {
-      "avg_latency_ms": 2990,
+      "avg_latency_ms": 1474,
       "success_rate": 1.0
     },
     "gemini_gemini_flash_lite_latest": {
-      "avg_latency_ms": 467,
+      "avg_latency_ms": 484,
       "success_rate": 1.0
     },
     "gemini_gemini_pro_latest": {
@@ -64,7 +64,7 @@
       "success_rate": 0.0
     },
     "gemini_gemini_3_flash_preview": {
-      "avg_latency_ms": 720,
+      "avg_latency_ms": 1239,
       "success_rate": 1.0
     },
     "gemini_gemini_3_1_pro_preview": {
@@ -72,79 +72,79 @@
       "success_rate": 0.0
     },
     "gemini_gemini_3_1_flash_lite_preview": {
-      "avg_latency_ms": 537,
+      "avg_latency_ms": 565,
       "success_rate": 1.0
     },
     "gemini_gemini_3_1_flash_lite": {
-      "avg_latency_ms": 2645,
+      "avg_latency_ms": 10299,
       "success_rate": 1.0
     },
     "gemini_gemini_3_5_flash": {
-      "avg_latency_ms": 6231,
+      "avg_latency_ms": 852,
       "success_rate": 1.0
     },
     "gemini_gemini_3_5_flash_lite": {
-      "avg_latency_ms": 487,
+      "avg_latency_ms": 482,
       "success_rate": 1.0
     },
     "gemini_gemini_3_6_flash": {
-      "avg_latency_ms": 706,
+      "avg_latency_ms": 1482,
       "success_rate": 1.0
     },
     "gemini_gemini_3_7_flash": {
-      "avg_latency_ms": 13929,
-      "success_rate": 1.0
+      "avg_latency_ms": 15000,
+      "success_rate": 0.7
     },
     "gemini_gemini_3_8_flash": {
-      "avg_latency_ms": 2252,
+      "avg_latency_ms": 1940,
       "success_rate": 1.0
     },
     "groq_openai/gpt_oss_20b": {
-      "avg_latency_ms": 329,
+      "avg_latency_ms": 92,
       "success_rate": 1.0
     },
     "groq_openai/gpt_oss_120b": {
-      "avg_latency_ms": 104,
+      "avg_latency_ms": 306,
       "success_rate": 1.0
     },
     "groq_allam_2_7b": {
-      "avg_latency_ms": 311,
+      "avg_latency_ms": 280,
       "success_rate": 1.0
     },
     "groq_qwen/qwen3_8_27b": {
-      "avg_latency_ms": 99,
+      "avg_latency_ms": 218,
       "success_rate": 1.0
     },
     "or_apodex_1_1_mini_free": {
-      "avg_latency_ms": 578,
+      "avg_latency_ms": 657,
       "success_rate": 1.0
     },
     "or_space_bunny_alpha": {
-      "avg_latency_ms": 1099,
+      "avg_latency_ms": 1008,
       "success_rate": 1.0
     },
     "or_ling_3_0_flash_sante_free": {
-      "avg_latency_ms": 690,
+      "avg_latency_ms": 702,
       "success_rate": 1.0
     },
     "or_qwen3_8_27b_free": {
-      "avg_latency_ms": 143,
+      "avg_latency_ms": 137,
       "success_rate": 1.0
     },
     "or_dots_3_note_preview_free": {
-      "avg_latency_ms": 720,
+      "avg_latency_ms": 904,
       "success_rate": 1.0
     },
     "or_lfm_2_5_2_6b_free": {
-      "avg_latency_ms": 347,
+      "avg_latency_ms": 3084,
       "success_rate": 1.0
     },
     "or_nemotron_3_5_lightning_free": {
-      "avg_latency_ms": 331,
+      "avg_latency_ms": 221,
       "success_rate": 1.0
     },
     "or_laguna_s_2_1_free": {
-      "avg_latency_ms": 534,
+      "avg_latency_ms": 531,
       "success_rate": 1.0
     },
     "or_laguna_xs_2_1_free": {
@@ -152,11 +152,11 @@
       "success_rate": 0.0
     },
     "or_north_mini_code_free": {
-      "avg_latency_ms": 287,
+      "avg_latency_ms": 292,
       "success_rate": 1.0
     },
     "or_nemotron_3_ultra_550b_a55b_free": {
-      "avg_latency_ms": 486,
+      "avg_latency_ms": 493,
       "success_rate": 1.0
     },
     "or_gemma_4_26b_a4b_it_free": {
@@ -168,16 +168,16 @@
       "success_rate": 0.0
     },
     "or_nemotron_3_super_120b_a12b_free": {
-      "avg_latency_ms": 527,
+      "avg_latency_ms": 347,
       "success_rate": 1.0
     },
     "or_free": {
-      "avg_latency_ms": 454,
+      "avg_latency_ms": 918,
       "success_rate": 1.0
     }
   },
   "_meta": {
-    "last_updated": "2026-10-03T02:47:57.397835+00:00",
+    "last_updated": "2026-10-04T03:19:09.309550+00:00",
     "schema_version": "1.0"
   }
 }
